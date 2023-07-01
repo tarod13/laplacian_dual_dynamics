@@ -1,0 +1,15 @@
+batch_size: 32
+c_neg: 1.0
+d: 10
+device: null
+discount: 0.9
+env_id: FourRoom
+log_dir: C:\Users\dfgom\Research\Repos\laplacian_grids-main\results\laprepr\FourRoom\rerun
+max_distance: 9
+n_samples: 100000
+print_freq: 1000
+reg_neg: 0.0
+replay_buffer_size: 100000
+save_freq: 10000
+total_train_steps: 100000
+w_neg: 5.0
