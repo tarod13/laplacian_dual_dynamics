@@ -1,13 +1,11 @@
 import numpy as np
 
 def normalize_pos(pos, grid_shape):
-    # import pdb;pdb.set_trace()
     x = pos[0] / grid_shape[0] - 0.5
     y = pos[1] / grid_shape[1] - 0.5
     return np.array([x, y])
 
 def normalize_pos_vec(pos, grid_shape):
-    # import pdb;pdb.set_trace()
     x = pos[:,0] / grid_shape[0] - 0.5
     y = pos[:,1] / grid_shape[1] - 0.5
     return np.stack([x, y], axis=1)

@@ -23,12 +23,10 @@ from ..tools import timer_tools
 # New libraries to use gym environments
 import random
 import gymnasium as gym
-from gymnasium.wrappers import (
-    TimeLimit, TransformObservation
-)
+from gymnasium.wrappers import TimeLimit
 
 import rl_lap.env
-from rl_lap.env.wrapper.transform import normalize_obs_dict
+from rl_lap.env.wrapper.norm_obs import NormObs
 from rl_lap.agent.agent import BehaviorAgent as Agent
 from rl_lap.policy import DiscreteUniformRandomPolicy as Policy
 
@@ -166,8 +164,8 @@ class LapReprLearner:
     
     def _compute_cosine_similarity(self, params):
         # Get baseline parameters
-        states = self._env.task.states
-        real_eigvec = self._env.task.maze.eigvec[:,:self._d]
+        states = self._env.get_states()
+        real_eigvec = self._env.get_eigenvectors()[:,:self._d]
         real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
         real_eigvec = real_eigvec / real_norms
 
@@ -209,14 +207,17 @@ class LapReprLearner:
             use_target=False, 
         )
         # Wrap environment with observation normalization
-        obs_wrapper = lambda e: TransformObservation(
-            e, lambda o: normalize_obs_dict(o, np.array([e.size, e.size]))
-        )
+        obs_wrapper = lambda e: NormObs(e)
         env = obs_wrapper(env)
         # Wrap environment with time limit
         time_wrapper = lambda e: TimeLimit(e, max_episode_steps=max_episode_steps)
         env = time_wrapper(env)
+
+        # Set seed
         env.reset(seed=seed)
+
+        # Set environment as attribute
+        self._env = env
 
         # Create agent
         seed_policy = seed if random_number_generator is None else None

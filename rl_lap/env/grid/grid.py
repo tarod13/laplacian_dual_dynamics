@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from itertools import product
 import numpy as np
 
@@ -61,6 +61,14 @@ class GridEnv(gym.Env):
         """
         self.window = None
         self.clock = None
+
+        self._states = np.argwhere(self.grid) #.astype(np.float32)
+        self.n_states = self._states.shape[0]
+        self._state_indices = {}
+        for i, pos in enumerate(self._states):
+            self._state_indices[tuple(pos)] = i
+        self._dyn_mat = self._maze_to_uniform_policy_dynamics()
+        self._eigvec = self._compute_eigenvectors()
 
     def _get_obs(self):
         # Get the agent's location after applying the transformations
@@ -222,3 +230,88 @@ class GridEnv(gym.Env):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
+
+    def _find_neighbors(self, row, col, state):
+        if (row-1, col) in self._state_indices:
+            state_up = self._state_indices[(row-1, col)]
+        else:
+            state_up = state
+        
+        if (row+1, col) in self._state_indices:
+            state_down = self._state_indices[(row+1, col)]
+        else:
+            state_down = state
+        
+        if (row, col-1) in self._state_indices:
+            state_left = self._state_indices[(row, col-1)]
+        else:
+            state_left = state
+        
+        if (row, col+1) in self._state_indices:
+            state_right = self._state_indices[(row, col+1)]
+        else:
+            state_right = state
+        return state_up, state_down, state_left, state_right
+
+    def _maze_to_transition_tensor(self):
+        '''Convert grid to transition tensor, assuming deterministic dynamics.'''
+        n_actions = 4   # up, down, left, right
+        n_states = self.n_states
+        T = np.zeros([n_states, n_actions, n_states])   # Transition tensor (state, action, state')
+
+        # Fill transition tensor with probabilities of going from state to state' given action
+        for (row, col), state in self._state_indices.items():
+            state_up, state_down, state_left, state_right = \
+                self._find_neighbors(row, col, state)
+            
+            # Fill transition tensor of visited neighbor states with 1 (deterministic)
+            T[state, 0, state_up] = 1
+            T[state, 1, state_down] = 1
+            T[state, 2, state_left] = 1
+            T[state, 3, state_right] = 1
+
+        return T
+    
+    def _maze_to_uniform_policy_dynamics(self, policy=None):
+        '''Convert grid to transition matrix, assuming uniform policy.'''
+        
+        # Initialize policy if not given
+        if policy is None:
+            n_actions = 4
+            policy = np.ones([self.n_states, n_actions]) / n_actions
+        
+        # Obtain transition tensor
+        T = self._maze_to_transition_tensor()
+
+        # Obtain dynamics matrix from transition tensor and policy
+        M = np.einsum('ijk,ij->ik', T, policy)   # Dynamics matrix (state, state')
+        
+        return M
+
+    def _compute_eigenvectors(self) -> List[np.ndarray]:
+        # Calculate eigenvectors
+        eigvals, eigvecs = np.linalg.eig(self._dyn_mat)
+        eigvals = eigvals.real
+        eigvecs = eigvecs.real
+
+        # Sort eigenvectors from largest to smallest eigenvalue, 
+        # given that we are using the dynamics matrix instead of 
+        # the successor representation matrix
+        idx = np.flip(eigvals.argsort())
+        eigvals = eigvals[idx]
+        eigvecs = eigvecs[:,idx]
+
+        # Normalize eigenvectors
+        eigvecs = eigvecs / np.linalg.norm(eigvecs, axis=0, keepdims=True)
+
+        # Choose directions of eigenvectors
+        eigvecs = np.sign(eigvecs[0,:].reshape(1,-1)) * eigvecs
+
+        return eigvecs
+    
+    def get_states(self):
+        return self._states
+    
+    def get_eigenvectors(self):
+        return self._eigvec
+    
