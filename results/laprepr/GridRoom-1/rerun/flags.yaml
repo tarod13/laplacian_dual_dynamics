@@ -3,8 +3,9 @@ c_neg: 1.0
 d: 10
 device: null
 discount: 0.9
-env_id: OneRoom
-log_dir: C:\Users\dfgom\Research\Repos\laplacian_dual_dynamics\results\laprepr\OneRoom\rerun
+env_family: null
+env_name: GridRoom-1
+log_dir: C:\Users\dfgom\Research\Repos\laplacian_dual_dynamics\results\laprepr\GridRoom-1\rerun
 max_distance: 9
 n_samples: 100000
 print_freq: 1000

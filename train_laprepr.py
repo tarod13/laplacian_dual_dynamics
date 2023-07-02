@@ -14,7 +14,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--log_base_dir', type=str, 
         default=os.path.join(os.getcwd(), 'results'))
 parser.add_argument('--log_sub_dir', type=str, default='rerun')
-parser.add_argument('--env_id', type=str, default='OneRoom')
+parser.add_argument('--env_name', type=str, default='GridRoom-1')
+parser.add_argument('--env_family', type=str, default='Grid-v0')
 parser.add_argument('--config_dir', type=str, default='rl_lap.configs')
 parser.add_argument('--config_file', 
         type=str, default='laprepr_config_gridworld')
@@ -46,16 +47,19 @@ def main():
     flags.log_dir = os.path.join(
             FLAGS.log_base_dir,
             FLAGS.exp_name,
-            FLAGS.env_id,
+            FLAGS.env_name,
             FLAGS.log_sub_dir)
 
-    flags.env_id = FLAGS.env_id
+    flags.env_name = FLAGS.env_name
     flags.args = FLAGS.args
     logging_tools.config_logging(flags.log_dir)
     cfg = cfg_cls(flags)
     flag_tools.save_flags(cfg.flags, flags.log_dir)
 
-    learner = laprepr_jax.LapReprLearner(cfg.flags.d, cfg.flags.max_distance, **cfg.args)
+    learner = laprepr_jax.LapReprLearner(
+        cfg.flags.d, cfg.flags.max_distance, **cfg.args, 
+        env_name=FLAGS.env_name, env_family=FLAGS.env_family,
+        )
     learner.train()
 
     print('Total time cost: {:.4g}s.'.format(timer.time_cost()))

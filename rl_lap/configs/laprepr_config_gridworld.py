@@ -14,7 +14,8 @@ class LapReprConfig(flag_tools.ConfigBase):
     def _set_default_flags(self):
         flags = self._flags
         flags.device = None
-        flags.env_id = None
+        flags.env_name = None
+        flags.env_family = None
         # agent
         flags.d = 20
         flags.n_samples = 10000
@@ -31,7 +32,7 @@ class LapReprConfig(flag_tools.ConfigBase):
         flags.save_freq = 10000
 
     def _build(self):
-        self._build_env()
+        # self._build_env()
         self._build_args()
 
     def _obs_prepro(self, obs):
@@ -51,8 +52,8 @@ class LapReprConfig(flag_tools.ConfigBase):
         args = flag_tools.Flags()
         args.device = self._flags.device
         # env args
-        args.action_spec = self._action_spec
-        args.obs_shape = self._obs_shape
+        # args.action_spec = self._action_spec
+        # args.obs_shape = self._obs_shape
         args.obs_prepro = self._obs_prepro
         args.env_factory = self._env_factory
         # learner args
@@ -100,12 +101,12 @@ class Config(LapReprConfig):
 
         flags.max_distance = 9
 
-    def _obs_prepro(self, obs):
-        if 'cube' in self._flags.env_id:
-            return obs
-        else:
-            return obs.agent.position
+    # def _obs_prepro(self, obs):
+    #     if 'cube' in self._flags.env_name:
+    #         return obs
+    #     else:
+    #         return obs.agent.position
 
     def _env_factory(self):
-        env =  gridworld_envs.make(self._flags.env_id)
+        env =  gridworld_envs.make(self._flags.env_name)
         return env

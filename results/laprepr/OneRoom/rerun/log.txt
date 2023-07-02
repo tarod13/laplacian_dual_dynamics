@@ -10,8 +10,411 @@ Start collecting samples.
 (80000/100000) steps collected.
 (90000/100000) steps collected.
 (100000/100000) steps collected.
-Data collection finished, time cost: 12.188347339630127s
+Data collection finished, time cost: 8.930301189422607s
 Unable to initialize backend 'cuda': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
 Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
 Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
 No GPU/TPU found, falling back to CPU. (Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+Training steps per second: 0.
+Step 1; loss_total -0.2098; loss_pos 0.0375; loss_neg -0.04946; cos_sim 0.2242; 
+Training steps per second: 439.1.
+Step 1000; loss_total -0.03682; loss_pos 0.6032; loss_neg -0.128; cos_sim 0.4598; 
+Training steps per second: 408.
+Step 2000; loss_total -1.83; loss_pos 0.6096; loss_neg -0.488; cos_sim 0.536; 
+Training steps per second: 408.7.
+Step 3000; loss_total -0.1116; loss_pos 0.3552; loss_neg -0.09336; cos_sim 0.5659; 
+Training steps per second: 421.6.
+Step 4000; loss_total -2.227; loss_pos 0.4515; loss_neg -0.5357; cos_sim 0.5814; 
+Training steps per second: 443.8.
+Step 5000; loss_total -1.408; loss_pos 0.6179; loss_neg -0.4052; cos_sim 0.5807; 
+Training steps per second: 489.9.
+Step 6000; loss_total -1.696; loss_pos 0.5576; loss_neg -0.4507; cos_sim 0.5789; 
+Training steps per second: 483.1.
+Step 7000; loss_total -1.137; loss_pos 1.137; loss_neg -0.4549; cos_sim 0.576; 
+Training steps per second: 485.3.
+Step 8000; loss_total -1.446; loss_pos 0.598; loss_neg -0.4088; cos_sim 0.5671; 
+Training steps per second: 472.8.
+Step 9000; loss_total -0.5609; loss_pos 0.6734; loss_neg -0.2469; cos_sim 0.5738; 
+Training steps per second: 454.3.
+Step 10000; loss_total -1.321; loss_pos 0.4931; loss_neg -0.3627; cos_sim 0.5719; 
+Training steps per second: 447.6.
+Step 11000; loss_total -1.193; loss_pos 0.5408; loss_neg -0.3468; cos_sim 0.5745; 
+Training steps per second: 464.3.
+Step 12000; loss_total -0.71; loss_pos 1.12; loss_neg -0.366; cos_sim 0.5803; 
+Training steps per second: 452.3.
+Step 13000; loss_total -1.012; loss_pos 0.7939; loss_neg -0.3611; cos_sim 0.5785; 
+Training steps per second: 464.1.
+Step 14000; loss_total -1.765; loss_pos 0.5054; loss_neg -0.4541; cos_sim 0.589; 
+Training steps per second: 459.5.
+Step 15000; loss_total -0.7456; loss_pos 0.8916; loss_neg -0.3274; cos_sim 0.598; 
+Training steps per second: 466.2.
+Step 16000; loss_total -1.264; loss_pos 0.7927; loss_neg -0.4114; cos_sim 0.5849; 
+Training steps per second: 466.1.
+Step 17000; loss_total -1.769; loss_pos 0.7585; loss_neg -0.5055; cos_sim 0.5937; 
+Training steps per second: 469.6.
+Step 18000; loss_total -1.224; loss_pos 0.6184; loss_neg -0.3685; cos_sim 0.6108; 
+Training steps per second: 469.5.
+Step 19000; loss_total -1.512; loss_pos 0.9326; loss_neg -0.4889; cos_sim 0.6204; 
+Training steps per second: 456.1.
+Step 20000; loss_total -2.299; loss_pos 0.5991; loss_neg -0.5796; cos_sim 0.6188; 
+Training steps per second: 443.9.
+Step 21000; loss_total -1.934; loss_pos 0.4343; loss_neg -0.4737; cos_sim 0.6156; 
+Training steps per second: 458.3.
+Step 22000; loss_total -1.987; loss_pos 0.4846; loss_neg -0.4943; cos_sim 0.624; 
+Training steps per second: 463.2.
+Step 23000; loss_total -1.693; loss_pos 0.5934; loss_neg -0.4572; cos_sim 0.6259; 
+Training steps per second: 464.2.
+Step 24000; loss_total -1.57; loss_pos 0.8555; loss_neg -0.4852; cos_sim 0.6332; 
+Training steps per second: 469.
+Step 25000; loss_total -0.5517; loss_pos 0.8439; loss_neg -0.2791; cos_sim 0.6289; 
+Training steps per second: 470.
+Step 26000; loss_total -1.122; loss_pos 0.9614; loss_neg -0.4166; cos_sim 0.6427; 
+Training steps per second: 468.4.
+Step 27000; loss_total -1.942; loss_pos 0.7573; loss_neg -0.5399; cos_sim 0.6449; 
+Training steps per second: 457.5.
+Step 28000; loss_total -1.516; loss_pos 0.8263; loss_neg -0.4685; cos_sim 0.6402; 
+Training steps per second: 453.9.
+Step 29000; loss_total -1.1; loss_pos 1.093; loss_neg -0.4385; cos_sim 0.6496; 
+Training steps per second: 461.3.
+Step 30000; loss_total -1.147; loss_pos 0.6582; loss_neg -0.361; cos_sim 0.6524; 
+Training steps per second: 455.5.
+Step 31000; loss_total -2.17; loss_pos 0.7341; loss_neg -0.5808; cos_sim 0.6606; 
+Training steps per second: 467.8.
+Step 32000; loss_total -1.714; loss_pos 0.7095; loss_neg -0.4847; cos_sim 0.6623; 
+Training steps per second: 462.8.
+Step 33000; loss_total -1.161; loss_pos 0.9131; loss_neg -0.4147; cos_sim 0.6501; 
+Training steps per second: 447.9.
+Step 34000; loss_total -2.111; loss_pos 0.6863; loss_neg -0.5594; cos_sim 0.6653; 
+Training steps per second: 469.3.
+Step 35000; loss_total -1.664; loss_pos 0.6364; loss_neg -0.46; cos_sim 0.6579; 
+Training steps per second: 466.4.
+Step 36000; loss_total -1.473; loss_pos 0.7478; loss_neg -0.4443; cos_sim 0.6733; 
+Training steps per second: 460.8.
+Step 37000; loss_total -0.6833; loss_pos 0.8741; loss_neg -0.3115; cos_sim 0.6736; 
+Training steps per second: 468.1.
+Step 38000; loss_total 0.1895; loss_pos 1.103; loss_neg -0.1827; cos_sim 0.6825; 
+Training steps per second: 466.9.
+Step 39000; loss_total -1.712; loss_pos 0.9088; loss_neg -0.5241; cos_sim 0.6799; 
+Training steps per second: 466.2.
+Step 40000; loss_total -0.3639; loss_pos 0.8311; loss_neg -0.239; cos_sim 0.6862; 
+Training steps per second: 461.9.
+Step 41000; loss_total -2.751; loss_pos 0.5242; loss_neg -0.6551; cos_sim 0.6901; 
+Training steps per second: 469.8.
+Step 42000; loss_total -0.997; loss_pos 0.6622; loss_neg -0.3318; cos_sim 0.7033; 
+Training steps per second: 461.3.
+Step 43000; loss_total -2.704; loss_pos 0.7269; loss_neg -0.6862; cos_sim 0.6974; 
+Training steps per second: 461.7.
+Step 44000; loss_total -1.37; loss_pos 1.208; loss_neg -0.5158; cos_sim 0.6999; 
+Training steps per second: 470.
+Step 45000; loss_total -0.7887; loss_pos 1.049; loss_neg -0.3674; cos_sim 0.7049; 
+Training steps per second: 467.9.
+Step 46000; loss_total -1.189; loss_pos 0.6656; loss_neg -0.3709; cos_sim 0.6998; 
+Training steps per second: 469.7.
+Step 47000; loss_total -1.454; loss_pos 0.642; loss_neg -0.4192; cos_sim 0.7102; 
+Training steps per second: 468.8.
+Step 48000; loss_total -1.079; loss_pos 0.6548; loss_neg -0.3467; cos_sim 0.7117; 
+Training steps per second: 468.8.
+Step 49000; loss_total -2.095; loss_pos 0.6363; loss_neg -0.5462; cos_sim 0.7113; 
+Training steps per second: 466.8.
+Step 50000; loss_total -1.388; loss_pos 1.157; loss_neg -0.5091; cos_sim 0.7114; 
+Training steps per second: 457.
+Step 51000; loss_total -2.854; loss_pos 0.6583; loss_neg -0.7024; cos_sim 0.7012; 
+Training steps per second: 467.3.
+Step 52000; loss_total -1.114; loss_pos 0.6133; loss_neg -0.3454; cos_sim 0.7099; 
+Training steps per second: 469.7.
+Step 53000; loss_total -2.043; loss_pos 0.7656; loss_neg -0.5617; cos_sim 0.7133; 
+Training steps per second: 463.4.
+Step 54000; loss_total -0.5509; loss_pos 0.5841; loss_neg -0.227; cos_sim 0.7011; 
+Training steps per second: 466.1.
+Step 55000; loss_total -1.113; loss_pos 0.9713; loss_neg -0.4169; cos_sim 0.7099; 
+Training steps per second: 471.4.
+Step 56000; loss_total -1.823; loss_pos 0.8519; loss_neg -0.535; cos_sim 0.7001; 
+Training steps per second: 464.7.
+Step 57000; loss_total -1.2; loss_pos 1.175; loss_neg -0.4751; cos_sim 0.7023; 
+Training steps per second: 467.8.
+Step 58000; loss_total -0.8001; loss_pos 0.8461; loss_neg -0.3293; cos_sim 0.7087; 
+Training steps per second: 464.
+Step 59000; loss_total -1.646; loss_pos 0.5777; loss_neg -0.4447; cos_sim 0.7048; 
+Training steps per second: 468.4.
+Step 60000; loss_total -0.2305; loss_pos 1.395; loss_neg -0.3252; cos_sim 0.7103; 
+Training steps per second: 453.8.
+Step 61000; loss_total -0.699; loss_pos 0.9598; loss_neg -0.3318; cos_sim 0.718; 
+Training steps per second: 469.6.
+Step 62000; loss_total -1.127; loss_pos 1.127; loss_neg -0.451; cos_sim 0.7166; 
+Training steps per second: 468.2.
+Step 63000; loss_total -0.1659; loss_pos 1.302; loss_neg -0.2936; cos_sim 0.7107; 
+Training steps per second: 460.3.
+Step 64000; loss_total -2.491; loss_pos 0.5696; loss_neg -0.6122; cos_sim 0.7207; 
+Training steps per second: 468.
+Step 65000; loss_total -2.008; loss_pos 1.041; loss_neg -0.6098; cos_sim 0.7167; 
+Training steps per second: 450.7.
+Step 66000; loss_total -0.002197; loss_pos 0.867; loss_neg -0.1738; cos_sim 0.7133; 
+Training steps per second: 466.8.
+Step 67000; loss_total -0.5572; loss_pos 1.009; loss_neg -0.3132; cos_sim 0.7174; 
+Training steps per second: 468.8.
+Step 68000; loss_total -1.527; loss_pos 0.6848; loss_neg -0.4423; cos_sim 0.7154; 
+Training steps per second: 463.7.
+Step 69000; loss_total -1.57; loss_pos 0.8514; loss_neg -0.4843; cos_sim 0.7116; 
+Training steps per second: 469.4.
+Step 70000; loss_total -1.508; loss_pos 0.703; loss_neg -0.4422; cos_sim 0.717; 
+Training steps per second: 457.
+Step 71000; loss_total -1.4; loss_pos 0.8152; loss_neg -0.4431; cos_sim 0.7182; 
+Training steps per second: 472.
+Step 72000; loss_total -1.308; loss_pos 0.6722; loss_neg -0.396; cos_sim 0.7359; 
+Training steps per second: 466.6.
+Step 73000; loss_total -1.571; loss_pos 0.9302; loss_neg -0.5002; cos_sim 0.7368; 
+Training steps per second: 467.7.
+Step 74000; loss_total -1.22; loss_pos 0.8252; loss_neg -0.4091; cos_sim 0.7428; 
+Training steps per second: 467.4.
+Step 75000; loss_total -1.683; loss_pos 0.8285; loss_neg -0.5023; cos_sim 0.7342; 
+Training steps per second: 467.9.
+Step 76000; loss_total -2.743; loss_pos 0.4522; loss_neg -0.639; cos_sim 0.7336; 
+Training steps per second: 466.2.
+Step 77000; loss_total -1.91; loss_pos 0.8058; loss_neg -0.5432; cos_sim 0.7431; 
+Training steps per second: 471.5.
+Step 78000; loss_total -1.919; loss_pos 0.5378; loss_neg -0.4913; cos_sim 0.7467; 
+Training steps per second: 466.5.
+Step 79000; loss_total -1.518; loss_pos 0.9748; loss_neg -0.4985; cos_sim 0.7553; 
+Training steps per second: 467.5.
+Step 80000; loss_total -0.3237; loss_pos 1.122; loss_neg -0.2892; cos_sim 0.7579; 
+Training steps per second: 454.
+Step 81000; loss_total -0.4071; loss_pos 1.12; loss_neg -0.3054; cos_sim 0.7586; 
+Training steps per second: 473.2.
+Step 82000; loss_total -1.832; loss_pos 0.8052; loss_neg -0.5273; cos_sim 0.7506; 
+Training steps per second: 469.6.
+Step 83000; loss_total -0.3019; loss_pos 0.9273; loss_neg -0.2459; cos_sim 0.7679; 
+Training steps per second: 469.
+Step 84000; loss_total -2.13; loss_pos 0.7686; loss_neg -0.5796; cos_sim 0.7662; 
+Training steps per second: 465.7.
+Step 85000; loss_total -2.41; loss_pos 0.6015; loss_neg -0.6023; cos_sim 0.7632; 
+Training steps per second: 388.8.
+Step 86000; loss_total -1.731; loss_pos 0.6747; loss_neg -0.4811; cos_sim 0.7683; 
+Training steps per second: 423.8.
+Step 87000; loss_total -1.898; loss_pos 0.6927; loss_neg -0.5181; cos_sim 0.772; 
+Training steps per second: 379.7.
+Step 88000; loss_total -1.128; loss_pos 0.8231; loss_neg -0.3903; cos_sim 0.783; 
+Training steps per second: 427.5.
+Step 89000; loss_total -0.432; loss_pos 0.6098; loss_neg -0.2084; cos_sim 0.7783; 
+Training steps per second: 430.3.
+Step 90000; loss_total -1.249; loss_pos 0.972; loss_neg -0.4441; cos_sim 0.7894; 
+Training steps per second: 436.
+Step 91000; loss_total -2.066; loss_pos 0.5705; loss_neg -0.5273; cos_sim 0.7879; 
+Training steps per second: 449.2.
+Step 92000; loss_total -0.8922; loss_pos 0.949; loss_neg -0.3682; cos_sim 0.786; 
+Training steps per second: 469.6.
+Step 93000; loss_total -2.396; loss_pos 0.7212; loss_neg -0.6234; cos_sim 0.7858; 
+Training steps per second: 456.5.
+Step 94000; loss_total -1.814; loss_pos 0.8934; loss_neg -0.5415; cos_sim 0.7948; 
+Training steps per second: 442.1.
+Step 95000; loss_total 0.4511; loss_pos 1.256; loss_neg -0.1609; cos_sim 0.7957; 
+Training steps per second: 462.6.
+Step 96000; loss_total -1.424; loss_pos 0.8353; loss_neg -0.4519; cos_sim 0.7951; 
+Training steps per second: 443.
+Step 97000; loss_total -0.8642; loss_pos 0.9808; loss_neg -0.369; cos_sim 0.79; 
+Training steps per second: 434.5.
+Step 98000; loss_total -2.7; loss_pos 0.8685; loss_neg -0.7137; cos_sim 0.8033; 
+Training steps per second: 474.8.
+Step 99000; loss_total -2.31; loss_pos 0.6839; loss_neg -0.5988; cos_sim 0.7973; 
+Training steps per second: 472.4.
+Step 100000; loss_total -1.021; loss_pos 0.8895; loss_neg -0.382; cos_sim 0.7952; 
+Training steps per second: 466.7.
+Step 101000; loss_total -1.921; loss_pos 0.8151; loss_neg -0.5473; cos_sim 0.8004; 
+Training steps per second: 467.8.
+Step 102000; loss_total -0.9161; loss_pos 0.8999; loss_neg -0.3632; cos_sim 0.8088; 
+Training steps per second: 469.5.
+Step 103000; loss_total -2.105; loss_pos 0.7333; loss_neg -0.5676; cos_sim 0.8054; 
+Training steps per second: 463.3.
+Step 104000; loss_total -2.13; loss_pos 0.6233; loss_neg -0.5506; cos_sim 0.8076; 
+Training steps per second: 469.8.
+Step 105000; loss_total -0.8404; loss_pos 1.091; loss_neg -0.3863; cos_sim 0.8052; 
+Training steps per second: 464.1.
+Step 106000; loss_total -2.296; loss_pos 0.4915; loss_neg -0.5576; cos_sim 0.8055; 
+Training steps per second: 469.7.
+Step 107000; loss_total -1.341; loss_pos 1.022; loss_neg -0.4726; cos_sim 0.8132; 
+Training steps per second: 469.8.
+Step 108000; loss_total -1.027; loss_pos 0.9594; loss_neg -0.3973; cos_sim 0.8172; 
+Training steps per second: 469.8.
+Step 109000; loss_total -1.197; loss_pos 1.069; loss_neg -0.4532; cos_sim 0.8171; 
+Training steps per second: 471.5.
+Step 110000; loss_total -2.092; loss_pos 0.894; loss_neg -0.5972; cos_sim 0.8162; 
+Training steps per second: 466.3.
+Step 111000; loss_total -1.225; loss_pos 1.213; loss_neg -0.4876; cos_sim 0.8151; 
+Training steps per second: 468.1.
+Step 112000; loss_total -1.914; loss_pos 0.8249; loss_neg -0.5477; cos_sim 0.8174; 
+Training steps per second: 467.7.
+Step 113000; loss_total -0.8791; loss_pos 1.075; loss_neg -0.3907; cos_sim 0.8147; 
+Training steps per second: 466.2.
+Step 114000; loss_total -2.138; loss_pos 0.5502; loss_neg -0.5375; cos_sim 0.8228; 
+Training steps per second: 466.2.
+Step 115000; loss_total -1.178; loss_pos 0.808; loss_neg -0.3971; cos_sim 0.8244; 
+Training steps per second: 469.8.
+Step 116000; loss_total -1.532; loss_pos 1.089; loss_neg -0.5243; cos_sim 0.8227; 
+Training steps per second: 470.8.
+Step 117000; loss_total -1.569; loss_pos 0.789; loss_neg -0.4715; cos_sim 0.8292; 
+Training steps per second: 437.3.
+Step 118000; loss_total 0.1512; loss_pos 0.9259; loss_neg -0.1549; cos_sim 0.8328; 
+Training steps per second: 415.2.
+Step 119000; loss_total -1.36; loss_pos 0.7346; loss_neg -0.4189; cos_sim 0.829; 
+Training steps per second: 466.3.
+Step 120000; loss_total -2.054; loss_pos 0.7999; loss_neg -0.5708; cos_sim 0.8322; 
+Training steps per second: 454.9.
+Step 121000; loss_total -0.9144; loss_pos 0.9686; loss_neg -0.3766; cos_sim 0.8298; 
+Training steps per second: 471.4.
+Step 122000; loss_total -1.397; loss_pos 0.8784; loss_neg -0.455; cos_sim 0.8414; 
+Training steps per second: 466.
+Step 123000; loss_total -1.49; loss_pos 1.01; loss_neg -0.5001; cos_sim 0.8414; 
+Training steps per second: 471.5.
+Step 124000; loss_total -0.06768; loss_pos 1.316; loss_neg -0.2768; cos_sim 0.8442; 
+Training steps per second: 472.4.
+Step 125000; loss_total -1.804; loss_pos 0.9455; loss_neg -0.55; cos_sim 0.8359; 
+Training steps per second: 470.7.
+Step 126000; loss_total -0.1479; loss_pos 0.8041; loss_neg -0.1904; cos_sim 0.8376; 
+Training steps per second: 472.2.
+Step 127000; loss_total -0.6985; loss_pos 0.8918; loss_neg -0.318; cos_sim 0.8483; 
+Training steps per second: 471.5.
+Step 128000; loss_total -1.093; loss_pos 0.8499; loss_neg -0.3886; cos_sim 0.8425; 
+Training steps per second: 471.5.
+Step 129000; loss_total -1.908; loss_pos 0.667; loss_neg -0.515; cos_sim 0.8509; 
+Training steps per second: 465.1.
+Step 130000; loss_total -1.413; loss_pos 0.9952; loss_neg -0.4817; cos_sim 0.849; 
+Training steps per second: 464.5.
+Step 131000; loss_total -0.8126; loss_pos 1.428; loss_neg -0.4482; cos_sim 0.8525; 
+Training steps per second: 460.7.
+Step 132000; loss_total -1.381; loss_pos 0.5855; loss_neg -0.3934; cos_sim 0.8525; 
+Training steps per second: 469.7.
+Step 133000; loss_total 1.212; loss_pos 1.111; loss_neg 0.02025; cos_sim 0.8571; 
+Training steps per second: 468.9.
+Step 134000; loss_total -1.016; loss_pos 1.099; loss_neg -0.4229; cos_sim 0.853; 
+Training steps per second: 467.6.
+Step 135000; loss_total -1.45; loss_pos 0.6678; loss_neg -0.4235; cos_sim 0.8573; 
+Training steps per second: 470.1.
+Step 136000; loss_total -1.37; loss_pos 0.7526; loss_neg -0.4246; cos_sim 0.8613; 
+Training steps per second: 464.5.
+Step 137000; loss_total -2.022; loss_pos 0.8178; loss_neg -0.568; cos_sim 0.8588; 
+Training steps per second: 473.2.
+Step 138000; loss_total -1.179; loss_pos 0.7246; loss_neg -0.3807; cos_sim 0.8679; 
+Training steps per second: 469.5.
+Step 139000; loss_total -0.2123; loss_pos 0.8215; loss_neg -0.2067; cos_sim 0.8649; 
+Training steps per second: 471.4.
+Step 140000; loss_total -0.9991; loss_pos 0.6846; loss_neg -0.3367; cos_sim 0.8687; 
+Training steps per second: 471.6.
+Step 141000; loss_total -2.196; loss_pos 0.8846; loss_neg -0.6162; cos_sim 0.8719; 
+Training steps per second: 469.7.
+Step 142000; loss_total -1.933; loss_pos 0.7987; loss_neg -0.5464; cos_sim 0.8717; 
+Training steps per second: 471.1.
+Step 143000; loss_total -1.377; loss_pos 0.6455; loss_neg -0.4046; cos_sim 0.8711; 
+Training steps per second: 453.9.
+Step 144000; loss_total -1.374; loss_pos 1.227; loss_neg -0.5204; cos_sim 0.8719; 
+Training steps per second: 469.8.
+Step 145000; loss_total -1.141; loss_pos 0.7427; loss_neg -0.3768; cos_sim 0.868; 
+Training steps per second: 471.5.
+Step 146000; loss_total -2.294; loss_pos 0.6163; loss_neg -0.5821; cos_sim 0.8753; 
+Training steps per second: 460.1.
+Step 147000; loss_total -1.444; loss_pos 0.7965; loss_neg -0.448; cos_sim 0.8777; 
+Training steps per second: 466.1.
+Step 148000; loss_total -1.629; loss_pos 1.068; loss_neg -0.5394; cos_sim 0.8783; 
+Training steps per second: 466.9.
+Step 149000; loss_total -1.785; loss_pos 0.6459; loss_neg -0.4862; cos_sim 0.8783; 
+Training steps per second: 468.1.
+Step 150000; loss_total -0.9581; loss_pos 0.9657; loss_neg -0.3848; cos_sim 0.8736; 
+Training steps per second: 471.6.
+Step 151000; loss_total -1.167; loss_pos 0.4716; loss_neg -0.3278; cos_sim 0.8814; 
+Training steps per second: 470.8.
+Step 152000; loss_total -1.71; loss_pos 0.7533; loss_neg -0.4926; cos_sim 0.8765; 
+Training steps per second: 471.3.
+Step 153000; loss_total -1.631; loss_pos 1.372; loss_neg -0.6007; cos_sim 0.8812; 
+Training steps per second: 462.6.
+Step 154000; loss_total -1.002; loss_pos 1.183; loss_neg -0.437; cos_sim 0.881; 
+Training steps per second: 469.
+Step 155000; loss_total -0.7995; loss_pos 0.938; loss_neg -0.3475; cos_sim 0.8844; 
+Training steps per second: 467.6.
+Step 156000; loss_total -1.521; loss_pos 0.8264; loss_neg -0.4696; cos_sim 0.882; 
+Training steps per second: 463.
+Step 157000; loss_total 0.6742; loss_pos 1.231; loss_neg -0.1115; cos_sim 0.8804; 
+Training steps per second: 469.7.
+Step 158000; loss_total -1.498; loss_pos 0.9318; loss_neg -0.486; cos_sim 0.8822; 
+Training steps per second: 468.
+Step 159000; loss_total -1.491; loss_pos 0.7657; loss_neg -0.4514; cos_sim 0.8854; 
+Training steps per second: 461.9.
+Step 160000; loss_total -1.56; loss_pos 0.657; loss_neg -0.4433; cos_sim 0.8821; 
+Training steps per second: 455.9.
+Step 161000; loss_total -1.591; loss_pos 0.8657; loss_neg -0.4912; cos_sim 0.8834; 
+Training steps per second: 463.
+Step 162000; loss_total -1.226; loss_pos 1.026; loss_neg -0.4504; cos_sim 0.8776; 
+Training steps per second: 462.9.
+Step 163000; loss_total -1.508; loss_pos 0.6411; loss_neg -0.4298; cos_sim 0.881; 
+Training steps per second: 471.
+Step 164000; loss_total -1.888; loss_pos 0.7967; loss_neg -0.537; cos_sim 0.8856; 
+Training steps per second: 471.3.
+Step 165000; loss_total -1.783; loss_pos 0.5989; loss_neg -0.4763; cos_sim 0.8857; 
+Training steps per second: 460.7.
+Step 166000; loss_total -1.511; loss_pos 0.9905; loss_neg -0.5003; cos_sim 0.8799; 
+Training steps per second: 464.8.
+Step 167000; loss_total -1.72; loss_pos 0.8849; loss_neg -0.521; cos_sim 0.8869; 
+Training steps per second: 466.4.
+Step 168000; loss_total -1.595; loss_pos 0.6242; loss_neg -0.4439; cos_sim 0.8814; 
+Training steps per second: 471.4.
+Step 169000; loss_total -1.2; loss_pos 0.7719; loss_neg -0.3945; cos_sim 0.8868; 
+Training steps per second: 462.1.
+Step 170000; loss_total -2.062; loss_pos 0.9525; loss_neg -0.6029; cos_sim 0.8797; 
+Training steps per second: 472.5.
+Step 171000; loss_total -1.34; loss_pos 1.087; loss_neg -0.4855; cos_sim 0.8803; 
+Training steps per second: 471.5.
+Step 172000; loss_total -1.767; loss_pos 1.164; loss_neg -0.5862; cos_sim 0.887; 
+Training steps per second: 462.9.
+Step 173000; loss_total -1.437; loss_pos 0.9989; loss_neg -0.4873; cos_sim 0.883; 
+Training steps per second: 461.2.
+Step 174000; loss_total -1.543; loss_pos 0.9665; loss_neg -0.502; cos_sim 0.8851; 
+Training steps per second: 462.9.
+Step 175000; loss_total -1.084; loss_pos 0.8012; loss_neg -0.377; cos_sim 0.8902; 
+Training steps per second: 465.9.
+Step 176000; loss_total -1.737; loss_pos 0.6442; loss_neg -0.4762; cos_sim 0.8876; 
+Training steps per second: 467.6.
+Step 177000; loss_total -0.8943; loss_pos 1.224; loss_neg -0.4237; cos_sim 0.8922; 
+Training steps per second: 470.
+Step 178000; loss_total -1.812; loss_pos 0.5619; loss_neg -0.4749; cos_sim 0.8911; 
+Training steps per second: 471.6.
+Step 179000; loss_total -1.39; loss_pos 0.9463; loss_neg -0.4673; cos_sim 0.8933; 
+Training steps per second: 469.6.
+Step 180000; loss_total -0.2422; loss_pos 0.7643; loss_neg -0.2013; cos_sim 0.8909; 
+Training steps per second: 471.5.
+Step 181000; loss_total -0.9562; loss_pos 0.673; loss_neg -0.3258; cos_sim 0.8915; 
+Training steps per second: 466.1.
+Step 182000; loss_total -1.063; loss_pos 0.8314; loss_neg -0.379; cos_sim 0.8931; 
+Training steps per second: 471.4.
+Step 183000; loss_total -1.012; loss_pos 0.6193; loss_neg -0.3263; cos_sim 0.8906; 
+Training steps per second: 469.7.
+Step 184000; loss_total -1.592; loss_pos 0.8569; loss_neg -0.4897; cos_sim 0.8937; 
+Training steps per second: 469.2.
+Step 185000; loss_total -1.519; loss_pos 0.7068; loss_neg -0.4452; cos_sim 0.8963; 
+Training steps per second: 469.7.
+Step 186000; loss_total -0.8095; loss_pos 1.182; loss_neg -0.3984; cos_sim 0.8916; 
+Training steps per second: 473.4.
+Step 187000; loss_total -0.5385; loss_pos 1.14; loss_neg -0.3358; cos_sim 0.8925; 
+Training steps per second: 466.5.
+Step 188000; loss_total -0.8614; loss_pos 0.7073; loss_neg -0.3137; cos_sim 0.8954; 
+Training steps per second: 466.3.
+Step 189000; loss_total -1.255; loss_pos 0.7296; loss_neg -0.3969; cos_sim 0.8982; 
+Training steps per second: 468.5.
+Step 190000; loss_total -2.162; loss_pos 0.874; loss_neg -0.6073; cos_sim 0.8908; 
+Training steps per second: 468.1.
+Step 191000; loss_total -1.292; loss_pos 0.5776; loss_neg -0.3739; cos_sim 0.8956; 
+Training steps per second: 466.3.
+Step 192000; loss_total -1.392; loss_pos 0.9273; loss_neg -0.4639; cos_sim 0.8972; 
+Training steps per second: 473.
+Step 193000; loss_total -2.305; loss_pos 0.7267; loss_neg -0.6063; cos_sim 0.8971; 
+Training steps per second: 471.5.
+Step 194000; loss_total -1.331; loss_pos 0.7232; loss_neg -0.4108; cos_sim 0.8939; 
+Training steps per second: 473.2.
+Step 195000; loss_total -1.889; loss_pos 0.8869; loss_neg -0.5552; cos_sim 0.894; 
+Training steps per second: 471.9.
+Step 196000; loss_total -1.956; loss_pos 0.7494; loss_neg -0.5411; cos_sim 0.8982; 
+Training steps per second: 473.4.
+Step 197000; loss_total -1.958; loss_pos 1.035; loss_neg -0.5985; cos_sim 0.8927; 
+Training steps per second: 473.
+Step 198000; loss_total -1.028; loss_pos 0.7919; loss_neg -0.364; cos_sim 0.8985; 
+Training steps per second: 472.3.
+Step 199000; loss_total -2.475; loss_pos 0.6854; loss_neg -0.6321; cos_sim 0.8957; 
+Training steps per second: 473.3.
+Step 200000; loss_total -2.75; loss_pos 0.8069; loss_neg -0.7114; cos_sim 0.893; 
+Training finished, time cost 443.6s.

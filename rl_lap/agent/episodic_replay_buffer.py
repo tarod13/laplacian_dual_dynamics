@@ -73,7 +73,7 @@ class EpisodicReplayBuffer:
             # Push each step into the episode buffer until an end-of-episode
             # step is found. 
             # self._r is used to track the cumulative return in each episode.
-            if step.time_step.is_last:
+            if step.episode_done:
                 # construct a formal episode
                 episode = []
                 H = len(self._episode_buffer)

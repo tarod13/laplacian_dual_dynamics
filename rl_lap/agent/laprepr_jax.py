@@ -20,6 +20,17 @@ from ..tools import flag_tools
 from ..tools import summary_tools
 from ..tools import timer_tools
 
+# New libraries to use gym environments
+import random
+import gymnasium as gym
+from gymnasium.wrappers import (
+    TimeLimit, TransformObservation
+)
+
+import rl_lap.env
+from rl_lap.env.wrapper.transform import normalize_obs_dict
+from rl_lap.agent.agent import BehaviorAgent as Agent
+from rl_lap.policy import DiscreteUniformRandomPolicy as Policy
 
 Data = collections.namedtuple("Data", "s1 s2 s_neg s_neg_2")
 
@@ -74,6 +85,8 @@ class LapReprLearner:
             obs_shape=None,
             obs_prepro=None,
             env_factory=None,
+            env_name=None,
+            env_family=None,
             # learner args
             model_cfg=None,
             optimizer_cfg=None,
@@ -104,16 +117,16 @@ class LapReprLearner:
         self._global_step = 0
         self._train_info = collections.OrderedDict()
     
-    def _random_policy_fn(self, state):
+    def _random_policy_fn(self, state):   # TODO: Fix this function
         action = self._action_spec.sample()
         return action, None
 
-    def _get_obs_batch(self, steps):
-        obs_batch = [self._obs_prepro(s.step.time_step.observation)
+    def _get_obs_batch(self, steps):   # TODO: Check this function (way to build the batch)
+        obs_batch = [self._obs_prepro(s.step.agent_state["agent"])
                 for s in steps]
         return np.stack(obs_batch, axis=0)
 
-    def _get_rew_batch(self, steps):
+    def _get_rew_batch(self, steps):   # TODO: Fix this function
         rew_batch = [s.step.time_step.reward
                 for s in steps]
         return np.stack(rew_batch, axis=0)
@@ -177,13 +190,43 @@ class LapReprLearner:
                 step=self._global_step, info=self._train_info)
         logging.info(summary_str)
 
-    def train(self):
+    def train(
+            self, 
+            max_episode_steps: int = 50,
+            random_number_generator: random.Random = None,
+            seed: int = 1337,
+        ):
         saver_dir = self._log_dir
         if not os.path.exists(saver_dir):
             os.makedirs(saver_dir)
 
-        self._env = self._env_factory()
-        actor = actors.StepActor(self._env_factory)
+        # Create environment
+        path_txt_grid = f'./rl_lap/env/grid/txts/{self._env_name}.txt'
+        env = gym.make(
+            self._env_family, 
+            path=path_txt_grid, 
+            render_mode="rgb_array", 
+            use_target=False, 
+        )
+        # Wrap environment with observation normalization
+        obs_wrapper = lambda e: TransformObservation(
+            e, lambda o: normalize_obs_dict(o, np.array([e.size, e.size]))
+        )
+        env = obs_wrapper(env)
+        # Wrap environment with time limit
+        time_wrapper = lambda e: TimeLimit(e, max_episode_steps=max_episode_steps)
+        env = time_wrapper(env)
+        env.reset(seed=seed)
+
+        # Create agent
+        seed_policy = seed if random_number_generator is None else None
+        policy = Policy(
+            num_actions=env.action_space.n, 
+            random_number_generator=random_number_generator, 
+            seed=seed_policy
+        )
+        agent = Agent(policy)
+
         # start actors, collect trajectories from random actions
         logging.info('Start collecting samples.')
         timer = timer_tools.Timer()
@@ -193,7 +236,7 @@ class LapReprLearner:
         while total_n_steps < self._n_samples:
             n_steps = min(collect_batch, 
                     self._n_samples - total_n_steps)
-            steps = actor.get_steps(n_steps, self._random_policy_fn)
+            steps = agent.collect_experience(env, n_steps)
             self._replay_buffer.add_steps(steps)
             total_n_steps += n_steps
             logging.info('({}/{}) steps collected.'
@@ -202,7 +245,7 @@ class LapReprLearner:
         logging.info('Data collection finished, time cost: {}s'
             .format(time_cost))
 
-        seed = 1337
+        
         rng = hk.PRNGSequence(jax.random.PRNGKey(seed))
         sample_input = self._get_train_batch()
         params = self._repr_fn.init(next(rng), sample_input.s1)
@@ -237,70 +280,70 @@ class LapReprLearner:
         logging.info('Training finished, time cost {:.4g}s.'.format(time_cost))
 
 
-        plot_dir = saver_dir.replace("laprepr", "visuals")
-        if not os.path.exists(plot_dir):
-            os.makedirs(plot_dir)
-        # get all states representation
-        n_states = self._env.task.maze.n_states
-        pos_batch = self._env.task.maze.all_empty_grids()
-        obs_batch = [self._env.task.pos_to_obs(pos_batch[i]) for i in range(n_states)]
-        states_batch = np.array([self._obs_prepro(obs) for obs in obs_batch])
+        # plot_dir = saver_dir.replace("laprepr", "visuals")
+        # if not os.path.exists(plot_dir):
+        #     os.makedirs(plot_dir)
+        # # get all states representation
+        # n_states = self._env.task.maze.n_states
+        # pos_batch = self._env.task.maze.all_empty_grids()
+        # obs_batch = [self._env.task.pos_to_obs(pos_batch[i]) for i in range(n_states)]
+        # states_batch = np.array([self._obs_prepro(obs) for obs in obs_batch])
 
-        # get goal state representation
-        goal_pos = self._env.task.goal_pos
-        goal_obs = self._env.task.pos_to_obs(goal_pos)
-        goal_state = self._obs_prepro(goal_obs)[None]
+        # # get goal state representation
+        # goal_pos = self._env.task.goal_pos
+        # goal_obs = self._env.task.pos_to_obs(goal_pos)
+        # goal_state = self._obs_prepro(goal_obs)[None]
 
-        # get representations from loaded model
-        goal_repr = self._repr_fn.apply(params, goal_state)
-        states_reprs = self._repr_fn.apply(params, states_batch)
+        # # get representations from loaded model
+        # goal_repr = self._repr_fn.apply(params, goal_state)
+        # states_reprs = self._repr_fn.apply(params, states_batch)
 
-        # compute l2 distances from states to goal
-        l2_dists = np.sqrt(np.sum(np.square(states_reprs - goal_repr), axis=-1))
-        image_shape = goal_obs.agent.image.shape
-        map_ = np.zeros(image_shape[:2], dtype=np.float32)
-        map_[pos_batch[:, 0], pos_batch[:, 1]] = l2_dists
-        im_ = plt.imshow(map_, interpolation='none', cmap='Blues')
-        plt.colorbar()
+        # # compute l2 distances from states to goal
+        # l2_dists = np.sqrt(np.sum(np.square(states_reprs - goal_repr), axis=-1))
+        # image_shape = goal_obs.agent.image.shape
+        # map_ = np.zeros(image_shape[:2], dtype=np.float32)
+        # map_[pos_batch[:, 0], pos_batch[:, 1]] = l2_dists
+        # im_ = plt.imshow(map_, interpolation='none', cmap='Blues')
+        # plt.colorbar()
 
-        # add the walls to the normalized distance plot
-        walls = np.expand_dims(self._env.task.maze.render(), axis=-1)
-        map_2 = im_.cmap(im_.norm(map_))
-        map_2[:, :, :-1] = map_2[:, :, :-1] * (1 - walls) + 0.5 * walls
-        map_2[:, :, -1:] = map_2[:, :, -1:] * (1 - walls) + 1.0 * walls
-        map_2[goal_pos[0], goal_pos[1]] = [1, 0, 0, 1]
-        plt.cla()
-        plt.imshow(map_2, interpolation='none')
-        plt.xticks([])
-        plt.yticks([])
-        plt.title('Distance to goal')
-        figfile = os.path.join(plot_dir, 'l2dist_goal.png')
-        plt.savefig(figfile, bbox_inches='tight')
-        plt.clf()
+        # # add the walls to the normalized distance plot
+        # walls = np.expand_dims(self._env.task.maze.render(), axis=-1)
+        # map_2 = im_.cmap(im_.norm(map_))
+        # map_2[:, :, :-1] = map_2[:, :, :-1] * (1 - walls) + 0.5 * walls
+        # map_2[:, :, -1:] = map_2[:, :, -1:] * (1 - walls) + 1.0 * walls
+        # map_2[goal_pos[0], goal_pos[1]] = [1, 0, 0, 1]
+        # plt.cla()
+        # plt.imshow(map_2, interpolation='none')
+        # plt.xticks([])
+        # plt.yticks([])
+        # plt.title('Distance to goal')
+        # figfile = os.path.join(plot_dir, 'l2dist_goal.png')
+        # plt.savefig(figfile, bbox_inches='tight')
+        # plt.clf()
 
-        # -- visialize state representations --
-        # plot raw distances with the walls
-        image_shape = goal_obs.agent.image.shape
-        map_ = np.zeros(image_shape[:2], dtype=np.float32)
-        eigen=0
-        for eigen in range(min(50, self._d)):
-            map_[pos_batch[:, 0], pos_batch[:, 1]] = states_reprs[:, eigen]
-            im_ = plt.imshow(map_, interpolation='none', cmap='Blues')
-            plt.colorbar()
+        # # -- visialize state representations --
+        # # plot raw distances with the walls
+        # image_shape = goal_obs.agent.image.shape
+        # map_ = np.zeros(image_shape[:2], dtype=np.float32)
+        # eigen=0
+        # for eigen in range(min(50, self._d)):
+        #     map_[pos_batch[:, 0], pos_batch[:, 1]] = states_reprs[:, eigen]
+        #     im_ = plt.imshow(map_, interpolation='none', cmap='Blues')
+        #     plt.colorbar()
 
-            # add the walls
-            walls = np.expand_dims(self._env.task.maze.render(), axis=-1)
-            map_2 = im_.cmap(im_.norm(map_))
-            map_2[:, :, :-1] = map_2[:, :, :-1] * (1 - walls) + 0.5 * walls
-            map_2[:, :, -1:] = map_2[:, :, -1:] * (1 - walls) + 1.0 * walls
-            plt.cla()
-            plt.imshow(map_2, interpolation='none')
-            plt.xticks([])
-            plt.yticks([])
-            plt.title(f'Representation dim={eigen}')
-            figfile = os.path.join(plot_dir, f'eigen{eigen}.png')
-            plt.savefig(figfile, bbox_inches='tight')
-            plt.clf()
+        #     # add the walls
+        #     walls = np.expand_dims(self._env.task.maze.render(), axis=-1)
+        #     map_2 = im_.cmap(im_.norm(map_))
+        #     map_2[:, :, :-1] = map_2[:, :, :-1] * (1 - walls) + 0.5 * walls
+        #     map_2[:, :, -1:] = map_2[:, :, -1:] * (1 - walls) + 1.0 * walls
+        #     plt.cla()
+        #     plt.imshow(map_2, interpolation='none')
+        #     plt.xticks([])
+        #     plt.yticks([])
+        #     plt.title(f'Representation dim={eigen}')
+        #     figfile = os.path.join(plot_dir, f'eigen{eigen}.png')
+        #     plt.savefig(figfile, bbox_inches='tight')
+        #     plt.clf()
 
 
     def save_ckpt(self, filepath, params):
