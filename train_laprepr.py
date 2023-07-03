@@ -1,69 +1,75 @@
 import os
-import argparse
+import yaml
+from argparse import ArgumentParser
 import importlib
 import random
 import numpy as np
+
+import jax
+import haiku as hk
+import optax
 
 from rl_lap.agent import laprepr_jax
 from rl_lap.tools import flag_tools
 from rl_lap.tools import timer_tools
 from rl_lap.tools import logging_tools
 
+from rl_lap.trainer.coefficient_augmented_martin import (
+    CoefficientAugmentedLaplacianEncoderTrainerM as Trainer
+)   # TODO: Add this class to rl_lap\trainer\__init__.py
+from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--log_base_dir', type=str, 
-        default=os.path.join(os.getcwd(), 'results'))
-parser.add_argument('--log_sub_dir', type=str, default='rerun')
-parser.add_argument('--env_name', type=str, default='GridRoom-1')
-parser.add_argument('--env_family', type=str, default='Grid-v0')
-parser.add_argument('--config_dir', type=str, default='rl_lap.configs')
-parser.add_argument('--config_file', 
-        type=str, default='laprepr_config_gridworld')
-parser.add_argument('--exp_name', type=str, default='laprepr')
-parser.add_argument('--args', type=str, action='append', default=[])
+def _build_model_haiku(d):   # TODO: Choose a better location for this function
+    def lap_net(obs):
+        network = hk.Sequential([
+            hk.Linear(256),   # TODO: Add hyperparameters to config file
+            jax.nn.relu,
+            hk.Linear(256),
+            jax.nn.relu,
+            hk.Linear(d),
+        ])
+        return network(obs.astype(np.float32))
+    return hk.without_apply_rng(hk.transform(lap_net))
 
-FLAGS = parser.parse_args()
+def main(hyperparams):
+    # Load YAML hyperparameters
+    with open(f'./rl_lap/hyperparam/{hyperparams.config_file}', 'r') as f:
+        hparam_yaml = yaml.safe_load(f)   # TODO: Check necessity of hyperparams
 
+    # Set random seed
+    np.random.seed(hparam_yaml['seed'])   # TODO: Check if this is the best way to set the seed
+    random.seed(hparam_yaml['seed'])
 
-def get_config_cls():
-    config_module = importlib.import_module(
-            FLAGS.config_dir+'.'+FLAGS.config_file)
-    config_cls = config_module.Config
-    return config_cls
-
-
-def main():
-    np.random.seed(423)
-    random.seed(423)
+    # Initialize timer
     timer = timer_tools.Timer()
-    if FLAGS.log_sub_dir == 'auto_d':
-        FLAGS.log_sub_dir = logging_tools.get_datetime()
 
-    # pass args to config
-    cfg_cls = get_config_cls()
-    flags = flag_tools.Flags()
+    # Create trainer
+    model = _build_model_haiku(hparam_yaml['d'])
+    optimizer = optax.adam(0.0001)   # TODO: Add hyperparameter to config file
+    replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['replay_buffer_size'])
+    logger = None
+    trainer = Trainer(
+        model=model,
+        optimizer=optimizer,
+        replay_buffer=replay_buffer,
+        logger=logger,
+        **hparam_yaml,
+    )
 
-    # log dir
-    flags.log_dir = os.path.join(
-            FLAGS.log_base_dir,
-            FLAGS.exp_name,
-            FLAGS.env_name,
-            FLAGS.log_sub_dir)
-
-    flags.env_name = FLAGS.env_name
-    flags.args = FLAGS.args
-    logging_tools.config_logging(flags.log_dir)
-    cfg = cfg_cls(flags)
-    flag_tools.save_flags(cfg.flags, flags.log_dir)
-
-    learner = laprepr_jax.LapReprLearner(
-        cfg.flags.d, cfg.flags.max_distance, **cfg.args, 
-        env_name=FLAGS.env_name, env_family=FLAGS.env_family,
-        )
-    learner.train()
-
+    # Print training time
     print('Total time cost: {:.4g}s.'.format(timer.time_cost()))
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--config_file', 
+        type=str, 
+        default='coefficient_augmented_martin.yaml', 
+        help='Configuration file to use.'
+    )
+
+    hyperparams = parser.parse_args()
+
+    main(hyperparams)

@@ -14,7 +14,7 @@ import optax
 import pickle
 
 from . import episodic_replay_buffer
-from ..envs_old import actors
+# from ..envs_old import actors
 from ..tools import py_tools
 from ..tools import flag_tools
 from ..tools import summary_tools
@@ -71,7 +71,7 @@ def _build_model_haiku(d):
 
 
 class LapReprLearner:
-
+    
     @py_tools.store_args
     def __init__(self,
             d,
@@ -128,9 +128,6 @@ class LapReprLearner:
         rew_batch = [s.step.time_step.reward
                 for s in steps]
         return np.stack(rew_batch, axis=0)
-
-    def _tensor(self, x):
-        return torch_tools.to_tensor(x, self._device)
 
     def _get_train_batch(self):
         s1, s2 = self._replay_buffer.sample_pairs(
