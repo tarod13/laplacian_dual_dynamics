@@ -3,7 +3,7 @@ import logging
 from typing import Tuple
 from abc import ABC, abstractmethod
 from itertools import product
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from tqdm import tqdm
 
 import torch
@@ -23,6 +23,12 @@ from rl_lap.policy import DiscreteUniformRandomPolicy as Policy
 
 # Martin libraries
 from ..tools import timer_tools
+import jax
+import haiku as hk
+import jax.numpy as jnp
+import numpy as np
+
+Data = namedtuple("Data", "s1 s2 s_neg s_neg_2")
 
 
 class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
@@ -31,7 +37,25 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.reset_counters()
         self.build_environment()
         self.collect_experience()
+        # self._train_step = jax.jit(self._train_step)   # TODO: _train_step
         self.train_info = OrderedDict()
+        self._global_step = 0
+
+    def _get_obs_batch(self, steps):   # TODO: Check this function (way to build the batch)
+        obs_batch = [s.step.agent_state["agent"]
+                for s in steps]
+        return np.stack(obs_batch, axis=0)
+
+    def _get_train_batch(self):
+        s1, s2 = self.replay_buffer.sample_pairs(
+                batch_size=self.batch_size,
+                discount=self.discount,
+                )
+        s_neg = self.replay_buffer.sample_steps(self.batch_size)
+        s_neg_2 = self.replay_buffer.sample_steps(self.batch_size)
+        s1_pos, s2_pos, s_neg, s_neg_2 = map(self._get_obs_batch, [s1, s2, s_neg, s_neg_2])
+        batch = Data(s1_pos, s2_pos, s_neg, s_neg_2)
+        return batch
 
     def train_step(self, batch, batch_global_idx) -> None:
         # Compute representations
@@ -66,40 +90,58 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         return loss, metrics_dict
 
-    def train(   # TODO: Simplify this function (break it into smaller functions)
-            self, 
-            num_epochs: int, 
-            profiler=None,
-        ) -> None:
-        
-        # Create saving directory
-        saver_dir = self.log_dir
-        if not os.path.exists(saver_dir):
-            os.makedirs(saver_dir)
+    def train(self) -> None:
 
-		
+        timer = timer_tools.Timer()
 
-        # Train model
-        for epoch in tqdm(range(num_epochs)):
+        rng = hk.PRNGSequence(jax.random.PRNGKey(self.seed))
+        sample_input = self._get_train_batch()
+        params = self.model.init(next(rng), sample_input.s1)
+        opt_state = self.optimizer.init(params)
 
-            # Train for one epoch
-            for batch_idx, batch in enumerate(train_loader):
-                batch_global_idx = epoch * n_batches_per_epoch + batch_idx
-                loss, metrics_dict_ = self.train_step(batch, batch_global_idx)
+        # learning begins   # TODO: Better comments
+        timer.set_step(0)
+        for step in range(self.total_train_steps):
+
+            train_batch = self._get_train_batch()
+            # params, opt_state, losses, cosine_similarity = self._train_step(train_batch, params, opt_state)
+
+            # self._global_step += 1   # TODO: Replace with self.step_counter
+            # self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
+            # self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
+            # self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
+            # self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]   # TODO: Add cosine similarity to _train_info
+
+            # print info
+            if step == 0 or (step + 1) % self.print_freq == 0:   # TODO: Replace with self.log_counter
+                steps_per_sec = timer.steps_per_sec(step)
+                print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
+                # self._print_train_info()   # TODO: _print_train_info
+        time_cost = timer.time_cost()
+        print(f'Training finished, time cost {time_cost:.4g}s.')
+
+
+        # # Train model
+        # for epoch in tqdm(range(num_epochs)):
+
+        #     # Train for one epoch
+        #     for batch_idx, batch in enumerate(train_loader):
+        #         batch_global_idx = epoch * n_batches_per_epoch + batch_idx
+        #         loss, metrics_dict_ = self.train_step(batch, batch_global_idx)
                 
-                # Update profiler
-                if profiler is not None:
-                    profiler.step()
+        #         # Update profiler
+        #         if profiler is not None:
+        #             profiler.step()
 
-            # Log epoch
-            if self.use_wandb:
-                self.logger.log({'epochs': epoch})
+        #     # Log epoch
+        #     if self.use_wandb:
+        #         self.logger.log({'epochs': epoch})
 
-        # Return final loss and metrics
-        if loss in locals() and metrics_dict_ in locals():
-            return loss, metrics_dict_
-        else:
-            return None, None
+        # # Return final loss and metrics
+        # if loss in locals() and metrics_dict_ in locals():
+        #     return loss, metrics_dict_
+        # else:
+        #     return None, None
 
     def reset_counters(self) -> None:   
         self.step_counter = 0
@@ -107,7 +149,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
     def update_counters(self) -> None:
         self.step_counter += 1
-        self.log_counter = (self.log_counter + 1) % self.log_every_n_steps
+        self.log_counter = (self.log_counter + 1) % self.print_freq
         
     def build_environment(self):
         # Create environment

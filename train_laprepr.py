@@ -55,6 +55,7 @@ def main(hyperparams):
         logger=logger,
         **hparam_yaml,
     )
+    trainer.train()
 
     # Print training time
     print('Total time cost: {:.4g}s.'.format(timer.time_cost()))
