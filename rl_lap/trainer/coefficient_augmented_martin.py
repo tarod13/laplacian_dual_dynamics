@@ -1,59 +1,66 @@
 from typing import Tuple
 from itertools import product
 import numpy as np
-import torch
+import jax
+import jax.numpy as jnp
 
 from rl_lap.trainer.laplacian_encoder import LaplacianEncoderTrainer
 
 
 class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
     def compute_graph_drawing_loss(self, start_representation, end_representation):
-        coeff_vector = torch.arange(
-            start_representation.shape[1], 0, -1, 
-            dtype=self.dtype, device=self.device
-        )
-        diff_matrix = (start_representation - end_representation)**2
-        loss = torch.einsum('ij,j->i', diff_matrix, coeff_vector).mean()
+        # Get vector of mononotically decreasing coefficients
+        coeff_vector = jnp.arange(start_representation.shape[1], 0, -1)
+
+        # Compute reprensetation distance between start and end states weighted by coeff_vector
+        loss = ((start_representation - end_representation)**2).dot(coeff_vector).mean()
+
         return loss
     
-    def compute_orthogonality_loss(self, start_representation, end_representation):
-        rep_dim = start_representation.shape[1]
+    def compute_orthogonality_loss(self, representation_1, representation_2):
+        representation_dim = representation_1.size
         loss = 0
-        for dim in range(rep_dim, 0, -1):
-            x_norm = torch.sqrt(((start_representation[:,:dim])**2).sum(dim=1, keepdims=True))
-            y_norm = torch.sqrt(((end_representation[:,:dim])**2).sum(dim=1, keepdims=True))
-            dot_product = (start_representation[:,:dim] * end_representation[:,:dim]).sum(dim=1, keepdims=True)
+        for dim in range(representation_dim, 0, -1):
+            norm_rep_1 = jnp.sqrt(jnp.dot(representation_1[:dim], representation_1[:dim]))
+            norm_rep_2 = jnp.sqrt(jnp.dot(representation_2[:dim], representation_2[:dim]))
+            dot_product = jnp.dot(representation_1[:dim], representation_2[:dim])
             loss += (
-                dot_product ** 2 - x_norm ** 2 / rep_dim  - y_norm ** 2 / rep_dim  ).mean()   # Why divide by rep_dim?
+                dot_product ** 2 
+                - (norm_rep_1 ** 2 / representation_dim)   # Why divide by rep_dim?
+                - (norm_rep_2 ** 2 / representation_dim)
+            )
                 
         return loss
 
     def loss_function(
-            self, representation_batch, **kwargs
-        ) -> Tuple[torch.Tensor]:
+            self, params, train_batch, **kwargs
+        ) -> Tuple[jnp.ndarray]:
 
-        # Unpack batch
-        start_representation, end_representation = representation_batch[:2]
-        start_representation_uncorrelated, end_representation_uncorrelated = \
-            representation_batch[2:4]
+        # Get representations
+        start_representation, end_representation, \
+            constraint_start_representation, constraint_end_representation \
+                = self.encode_states(params, train_batch)
         
         # Compute graph loss and regularization
-        graph_loss = self._compute_graph_drawing_loss(
+        graph_loss = self.compute_graph_drawing_loss(
             start_representation, end_representation
         )
-        orthogonality_loss = self._compute_orthogonality_loss(
-            start_representation_uncorrelated, end_representation_uncorrelated,
-        )
+
+        compute_orthogonality_loss_vmap = jax.vmap(self.compute_orthogonality_loss)
+        orthogonality_loss = compute_orthogonality_loss_vmap(
+            constraint_start_representation, constraint_end_representation,
+        ).mean()
         regularization_loss = self.regularization_weight * orthogonality_loss
 
         # Compute total loss
         loss = graph_loss + regularization_loss
 
-        # Store metrics
-        metrics_dict = {
-            'train_loss': loss.detach().item(),
-            'graph_loss': graph_loss.detach().item(),
-            'reg_loss': regularization_loss.detach().item(),
-        }
+        # # Store metrics   # TODO: Check if dictionary or straight up arrays are better
+        # metrics_dict = {
+        #     'train_loss': loss.detach().item(),
+        #     'graph_loss': graph_loss.detach().item(),
+        #     'reg_loss': regularization_loss.detach().item(),
+        # }
+        metrics = (loss, graph_loss, regularization_loss)
 
-        return loss, metrics_dict
+        return loss, metrics

@@ -27,8 +27,9 @@ import jax
 import haiku as hk
 import jax.numpy as jnp
 import numpy as np
+import optax
 
-Data = namedtuple("Data", "s1 s2 s_neg s_neg_2")
+Data = namedtuple("Data", "s1 s2 s_neg_1 s_neg_2")   # TODO: Change notation
 
 
 class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
@@ -37,7 +38,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.reset_counters()
         self.build_environment()
         self.collect_experience()
-        # self._train_step = jax.jit(self._train_step)   # TODO: _train_step
+        self.train_step = jax.jit(self.train_step)   # TODO: _train_step
         self.train_info = OrderedDict()
         self._global_step = 0
 
@@ -51,44 +52,40 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 batch_size=self.batch_size,
                 discount=self.discount,
                 )
-        s_neg = self.replay_buffer.sample_steps(self.batch_size)
+        s_neg_1 = self.replay_buffer.sample_steps(self.batch_size)
         s_neg_2 = self.replay_buffer.sample_steps(self.batch_size)
-        s1_pos, s2_pos, s_neg, s_neg_2 = map(self._get_obs_batch, [s1, s2, s_neg, s_neg_2])
-        batch = Data(s1_pos, s2_pos, s_neg, s_neg_2)
+        s1_pos, s2_pos, s_neg_1, s_neg_2 = map(self._get_obs_batch, [s1, s2, s_neg_1, s_neg_2])
+        batch = Data(s1_pos, s2_pos, s_neg_1, s_neg_2)
         return batch
 
-    def train_step(self, batch, batch_global_idx) -> None:
-        # Compute representations
-        representations = self.encode_states(*batch)
+    def train_step(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
+        # Compute the gradients and associated intermediate metrics
+        grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
         
-        # Compute loss and associated intermediate metrics
-        loss, metrics_dict = self.loss_function(representations)
-        
-        # Backpropagate loss
-        # for param in self.model.parameters():
-        #     param.grad = None
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        # Determine the real parameter updates
+        updates, opt_state = self.optimizer.update(grads, opt_state)
 
-        # Log losses
-        is_log_step = self.log_counter  == 0
-        if is_log_step:
-            # Compute additional metrics 
-            additional_metrics_dict = self.metrics()
-            metrics_dict.update(additional_metrics_dict)
-            metrics_dict['grad_steps'] = batch_global_idx
-            metrics_dict['examples'] = batch_global_idx * self.batch_size
-            # TODO: Add own wall clock time
+        # Update the parameters
+        params = optax.apply_updates(params, updates)
 
-            if self.use_wandb:   # TODO: Use an alternative to wandb
-                self.logger.log(metrics_dict)
+        # # Log losses
+        # is_log_step = self.log_counter  == 0
+        # if is_log_step:
+        #     # Compute additional metrics 
+        #     additional_metrics_dict = self.metrics()
+        #     metrics_dict.update(additional_metrics_dict)
+        #     metrics_dict['grad_steps'] = batch_global_idx
+        #     metrics_dict['examples'] = batch_global_idx * self.batch_size
+        #     # TODO: Add own wall clock time
 
-        # Update target network
-        self.update_counters()
-        self.update_target()
+        #     if self.use_wandb:   # TODO: Use an alternative to wandb
+        #         self.logger.log(metrics_dict)
 
-        return loss, metrics_dict
+        # # Update target network
+        # self.update_counters()
+        # self.update_target()
+
+        return params, opt_state, aux
 
     def train(self) -> None:
 
@@ -104,12 +101,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         for step in range(self.total_train_steps):
 
             train_batch = self._get_train_batch()
-            # params, opt_state, losses, cosine_similarity = self._train_step(train_batch, params, opt_state)
+            params, opt_state, losses = self.train_step(params, train_batch, opt_state)
 
-            # self._global_step += 1   # TODO: Replace with self.step_counter
-            # self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
-            # self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
-            # self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
+            self._global_step += 1   # TODO: Replace with self.step_counter
+            self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
+            self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
+            self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
             # self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]   # TODO: Add cosine similarity to _train_info
 
             # print info
@@ -198,34 +195,22 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     
     def encode_states(
             self, 
-            start_states: torch.Tensor,
-            end_states: torch.Tensor,
-            start_states_constraints: torch.Tensor,
-            end_states_constraints: torch.Tensor,
+            params,
+            train_batch: Data,
             *args, **kwargs,
-        ) -> Tuple[torch.Tensor]:
+        ) -> Tuple[jnp.ndarray]:
         # Compute start representations
-        start_representation = self.model(
-            start_states, use_target=False)
-        start_representation_constraints = self.model(
-            start_states_constraints, use_target=False)
+        start_representation = self.model.apply(params, train_batch.s1)
+        constraint_start_representation = self.model.apply(params, train_batch.s_neg_1)
 
         # Compute end representations
-        use_target_network = (
-            hasattr(self, 'use_target_network') and 
-            self.use_target_network
-        )
-        end_representation = self.model(end_states, use_target=use_target_network)
-        if self.calculate_end_constraint_representation:
-            end_representation_constraints = self.model(
-                end_states_constraints, use_target=use_target_network)
-        else:
-            end_representation_constraints = None
+        end_representation = self.model.apply(params, train_batch.s2)
+        constraint_end_representation = self.model.apply(params, train_batch.s_neg_2)
 
         return (
             start_representation, end_representation, 
-            start_representation_constraints, 
-            end_representation_constraints
+            constraint_start_representation, 
+            constraint_end_representation,
         )
     
     def update_target(self) -> None:

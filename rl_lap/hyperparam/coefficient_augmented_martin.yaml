@@ -12,8 +12,7 @@ optimizer_cfg: null
 n_samples: 100000
 batch_size: 32
 discount: 0.9
-w_neg: 5.0
-c_neg: 1.0
+regularization_weight: 5.0
 reg_neg: 0.0
 replay_buffer_size: 100000
 log_dir: '/tmp/rl_laprepr/log'

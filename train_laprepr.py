@@ -9,7 +9,7 @@ import jax
 import haiku as hk
 import optax
 
-from rl_lap.agent import laprepr_jax
+from rl_lap.agent import laprepr_jax   # TODO: Check if this is needed
 from rl_lap.tools import flag_tools
 from rl_lap.tools import timer_tools
 from rl_lap.tools import logging_tools
