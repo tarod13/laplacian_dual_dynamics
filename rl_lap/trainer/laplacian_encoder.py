@@ -23,6 +23,7 @@ from rl_lap.policy import DiscreteUniformRandomPolicy as Policy
 
 # Martin libraries
 from ..tools import timer_tools
+from ..tools import summary_tools
 import jax
 import haiku as hk
 import jax.numpy as jnp
@@ -39,6 +40,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.build_environment()
         self.collect_experience()
         self.train_step = jax.jit(self.train_step)   # TODO: _train_step
+        self.compute_cosine_similarity = jax.jit(self.compute_cosine_similarity)
         self.train_info = OrderedDict()
         self._global_step = 0
 
@@ -102,21 +104,26 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
             train_batch = self._get_train_batch()
             params, opt_state, losses = self.train_step(params, train_batch, opt_state)
+            cosine_similarity = self.compute_cosine_similarity(params)
 
             self._global_step += 1   # TODO: Replace with self.step_counter
             self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
             self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
             self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
-            # self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]   # TODO: Add cosine similarity to _train_info
+            self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
 
             # print info
             if step == 0 or (step + 1) % self.print_freq == 0:   # TODO: Replace with self.log_counter
                 steps_per_sec = timer.steps_per_sec(step)
                 print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
-                # self._print_train_info()   # TODO: _print_train_info
+                self._print_train_info()
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
 
+    def _print_train_info(self):   # TODO: Replace this function
+        summary_str = summary_tools.get_summary_str(
+                step=self._global_step, info=self.train_info)
+        print(summary_str)   # TODO: Use logging instead of print
 
         # # Train model
         # for epoch in tqdm(range(num_epochs)):
@@ -223,25 +230,26 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 if (self.step_counter % self.steps_to_update_target) == 0:
                     self.model._update_target(soft=False, target_update_rate=1.0)
 
-    def compute_ground_truth_cosine_similarity(self):
-        eigenvectors = self.model(
-            self.states.type(self.dtype).to(self.device))
-        eigenvectors_normalized = eigenvectors / eigenvectors.norm(dim=0, keepdim=True)
-        ground_truth_eigenvectors = (
-            self.ground_truth_eigenvectors 
-            / self.ground_truth_eigenvectors.norm(dim=0, keepdim=True)
-        )
-        similarity_first_direction = (
-            (eigenvectors_normalized * ground_truth_eigenvectors).sum(dim=0) 
-        )
-        similarity_second_direction = (
-            (- eigenvectors_normalized * ground_truth_eigenvectors).sum(dim=0)
-        )
-        similarities = torch.maximum(
-            similarity_first_direction, similarity_second_direction)
-        cosine_similarity = similarities.mean()     # Notice that you are assuming a uniform distribution over the grid.
-                                                    # This might be "unfair" with the methods that use a different distribution (maybe all?).
-        return cosine_similarity.item(), eigenvectors
+    def compute_cosine_similarity(self, params):
+        # Get baseline parameters
+        states = self.env.get_states()
+        real_eigvec = self.env.get_eigenvectors()[:,:self.d]
+        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
+        real_eigvec = real_eigvec / real_norms
+
+        # Get approximated eigenvectors
+        approx_eigvec = self.model.apply(params, states)
+        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
+        approx_eigvec = approx_eigvec / norms
+        
+        # Compute cosine similarities for both directions
+        sim_first_dir = (approx_eigvec * real_eigvec).sum(axis=0)
+        sim_second_dir = (- approx_eigvec * real_eigvec).sum(axis=0)
+
+        # Take the maximum similarity for each eigenvector
+        similarities = jnp.maximum(sim_first_dir, sim_second_dir)
+        cosine_similarity = similarities.mean()
+        return cosine_similarity
     
     def compute_orthogonality(self, eigenvectors=None):   # TODO: Check normalization (does it make sense to calculate here?)
         # Compute eigenvectors if not provided
