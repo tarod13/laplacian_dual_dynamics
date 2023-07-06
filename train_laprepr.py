@@ -19,6 +19,9 @@ from rl_lap.trainer.coefficient_augmented_martin import (
 )   # TODO: Add this class to rl_lap\trainer\__init__.py
 from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
+# Equinox version libraries
+from rl_lap.nets import MLPeqx, MLPflax, MLPhk, generate_hk_module_fn
+
 def _build_model_haiku(d):   # TODO: Choose a better location for this function
     def lap_net(obs):
         network = hk.Sequential([
@@ -44,8 +47,21 @@ def main(hyperparams):
     timer = timer_tools.Timer()
 
     # Create trainer
-    model = _build_model_haiku(hparam_yaml['d'])
-    optimizer = optax.adam(0.0001)   # TODO: Add hyperparameter to config file
+    nn_library = hparam_yaml['nn_library']
+    rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
+
+    if nn_library == 'haiku':
+        model = _build_model_haiku(hparam_yaml['d'])
+    elif nn_library == 'equinox':
+        model = MLPeqx(2, hparam_yaml['d'], [256, 256], rng_key)   # TODO: Add hyperparameters to config file
+    elif nn_library == 'flax':
+        model = MLPflax([256, 256, hparam_yaml['d']])
+    elif nn_library == 'haiku-v2':
+        model = generate_hk_module_fn(MLPhk, hparam_yaml['d'], [256, 256])
+    else:
+        raise ValueError(f'Unknown neural network library: {nn_library}')
+    
+    optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['replay_buffer_size'])
     logger = None
     trainer = Trainer(
@@ -53,6 +69,7 @@ def main(hyperparams):
         optimizer=optimizer,
         replay_buffer=replay_buffer,
         logger=logger,
+        rng_key=rng_key,
         **hparam_yaml,
     )
     trainer.train()

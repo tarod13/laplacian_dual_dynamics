@@ -30,6 +30,9 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
+# Equinox version libraries
+import equinox as eqx
+
 Data = namedtuple("Data", "s1 s2 s_neg_1 s_neg_2")   # TODO: Change notation
 
 
@@ -45,7 +48,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self._global_step = 0
 
     def _get_obs_batch(self, steps):   # TODO: Check this function (way to build the batch)
-        obs_batch = [s.step.agent_state["agent"]
+        obs_batch = [s.step.agent_state["agent"].astype(np.float32)
                 for s in steps]
         return np.stack(obs_batch, axis=0)
 
@@ -56,19 +59,34 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 )
         s_neg_1 = self.replay_buffer.sample_steps(self.batch_size)
         s_neg_2 = self.replay_buffer.sample_steps(self.batch_size)
-        s1_pos, s2_pos, s_neg_1, s_neg_2 = map(self._get_obs_batch, [s1, s2, s_neg_1, s_neg_2])
-        batch = Data(s1_pos, s2_pos, s_neg_1, s_neg_2)
+        s_pos_1, s_pos_2, s_neg_1, s_neg_2 = map(self._get_obs_batch, [s1, s2, s_neg_1, s_neg_2])
+        batch = Data(s_pos_1, s_pos_2, s_neg_1, s_neg_2)
         return batch
 
     def train_step(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
-        # Compute the gradients and associated intermediate metrics
-        grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
-        
-        # Determine the real parameter updates
-        updates, opt_state = self.optimizer.update(grads, opt_state)
+        if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
+            # Compute the gradients and associated intermediate metrics
+            grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
+            
+            # Determine the real parameter updates
+            updates, opt_state = self.optimizer.update(grads, opt_state)
 
-        # Update the parameters
-        params = optax.apply_updates(params, updates)
+            # Update the parameters
+            params = optax.apply_updates(params, updates)
+
+        elif self.nn_library == 'equinox':
+            # Compute the gradients and associated intermediate metrics
+            grads, aux = eqx.filter_grad(self.loss_function, has_aux=True)(
+                params, train_batch)
+            
+            # Determine the real parameter updates
+            updates, opt_state = self.optimizer.update(grads, opt_state)
+
+            # Update the parameters
+            params = eqx.apply_updates(params, updates)
+
+        else:
+            raise ValueError(f'Unknown neural network library: {self.nn_library}')
 
         # # Log losses
         # is_log_step = self.log_counter  == 0
@@ -93,9 +111,18 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         timer = timer_tools.Timer()
 
-        rng = hk.PRNGSequence(jax.random.PRNGKey(self.seed))
-        sample_input = self._get_train_batch()
-        params = self.model.init(next(rng), sample_input.s1)
+        if self.nn_library in ['haiku', 'haiku-v2']:
+            rng = hk.PRNGSequence(self.rng_key)
+            sample_input = self._get_train_batch()
+            params = self.model.init(next(rng), sample_input.s1)
+        elif self.nn_library == 'equinox':
+            params = self.model
+        elif self.nn_library == 'flax':
+            sample_input = self._get_train_batch()
+            params = self.model.init(self.rng_key, sample_input.s1)
+        else:
+            raise ValueError(f'Unknown neural network library: {self.nn_library}')
+        
         opt_state = self.optimizer.init(params)
 
         # learning begins   # TODO: Better comments
@@ -206,13 +233,27 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             train_batch: Data,
             *args, **kwargs,
         ) -> Tuple[jnp.ndarray]:
-        # Compute start representations
-        start_representation = self.model.apply(params, train_batch.s1)
-        constraint_start_representation = self.model.apply(params, train_batch.s_neg_1)
 
-        # Compute end representations
-        end_representation = self.model.apply(params, train_batch.s2)
-        constraint_end_representation = self.model.apply(params, train_batch.s_neg_2)
+        if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
+            # Compute start representations
+            start_representation = self.model.apply(params, train_batch.s1)
+            constraint_start_representation = self.model.apply(params, train_batch.s_neg_1)
+
+            # Compute end representations
+            end_representation = self.model.apply(params, train_batch.s2)
+            constraint_end_representation = self.model.apply(params, train_batch.s_neg_2)
+
+        elif self.nn_library == 'equinox':
+            # Compute start representations
+            start_representation = jax.vmap(params)(train_batch.s1)
+            constraint_start_representation = jax.vmap(params)(train_batch.s_neg_1)
+
+            # Compute end representations
+            end_representation = jax.vmap(params)(train_batch.s2)
+            constraint_end_representation = jax.vmap(params)(train_batch.s_neg_2)
+
+        else:
+            raise ValueError(f'Unknown neural network library: {self.nn_library}')
 
         return (
             start_representation, end_representation, 
@@ -238,7 +279,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         real_eigvec = real_eigvec / real_norms
 
         # Get approximated eigenvectors
-        approx_eigvec = self.model.apply(params, states)
+        if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
+            approx_eigvec = self.model.apply(params, states)
+        elif self.nn_library == 'equinox':
+            approx_eigvec = jax.vmap(params)(states)
+        else:
+            raise ValueError(f'Unknown neural network library: {self.nn_library}')
+
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms
         

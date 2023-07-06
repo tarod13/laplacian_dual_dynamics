@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 # Define abstract Trainer class
 class Trainer(ABC):
-    def __init__(self, model, optimizer, replay_buffer, logger, **kwargs):
+    def __init__(self, model, optimizer, replay_buffer, logger, rng_key, **kwargs):
         super().__init__()
 
         # Store model
@@ -10,6 +10,7 @@ class Trainer(ABC):
         self.optimizer = optimizer
         self.replay_buffer = replay_buffer
         self.logger = logger
+        self.rng_key = rng_key
 
         # Store all keyword arguments as attributes
         self.__dict__.update((k, v) for k, v in kwargs.items())

@@ -4,13 +4,15 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
+import equinox as eqx
+
 from rl_lap.trainer.laplacian_encoder import LaplacianEncoderTrainer
 
 
 class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
     def compute_graph_drawing_loss(self, start_representation, end_representation):
         # Get vector of mononotically decreasing coefficients
-        coeff_vector = jnp.arange(start_representation.shape[1], 0, -1)
+        coeff_vector = jnp.arange(self.d, 0, -1)
 
         # Compute reprensetation distance between start and end states weighted by coeff_vector
         loss = ((start_representation - end_representation)**2).dot(coeff_vector).mean()
@@ -33,13 +35,13 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         return loss
 
     def loss_function(
-            self, params, train_batch, **kwargs
+            self, model, train_batch, **kwargs
         ) -> Tuple[jnp.ndarray]:
 
         # Get representations
         start_representation, end_representation, \
             constraint_start_representation, constraint_end_representation \
-                = self.encode_states(params, train_batch)
+                = self.encode_states(model, train_batch)
         
         # Compute graph loss and regularization
         graph_loss = self.compute_graph_drawing_loss(

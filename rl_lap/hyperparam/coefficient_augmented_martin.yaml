@@ -23,3 +23,5 @@ max_episode_steps: 50
 seed: 1337
 env_name: GridRoom-1
 env_family: Grid-v0
+nn_library: haiku-v2
+lr: 0.0001
