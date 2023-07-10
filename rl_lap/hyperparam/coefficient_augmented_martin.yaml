@@ -15,12 +15,12 @@ discount: 0.9
 reg_neg: 0.0
 replay_buffer_size: 1000000
 log_dir: '/tmp/rl_laprepr/log'
-total_train_steps: 100000
+total_train_steps: 200000
 print_freq: 1000
 save_freq: 10000
 max_episode_steps: 200
-seed: 42
-env_name: GridRoom-64
+seed: 895
+env_name: GridRoom-4
 env_family: Grid-v0
 nn_library: haiku-v2
 lr: 0.0001
