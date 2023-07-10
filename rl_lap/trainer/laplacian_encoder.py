@@ -4,10 +4,10 @@ from typing import Tuple
 from abc import ABC, abstractmethod
 from itertools import product
 from collections import OrderedDict, namedtuple
-from tqdm import tqdm
+#from tqdm import tqdm
 
-import torch
-from torch.optim import Optimizer
+#import torch
+#from torch.optim import Optimizer
 
 from rl_lap.trainer.trainer import Trainer
 
@@ -137,6 +137,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             metrics_dict = metrics[-1]
             cosine_similarity = self.compute_cosine_similarity(params)
             metrics_dict['cosine_similarity'] = cosine_similarity
+            metrics_dict['grad_step'] = self._global_step
+            metrics_dict['examples'] = self._global_step * self.batch_size
+            metrics_dict['wall_clock_time'] = timer.time_cost()
 
             self._global_step += 1   # TODO: Replace with self.step_counter
             self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
@@ -305,42 +308,42 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         cosine_similarity = similarities.mean()
         return cosine_similarity
     
-    def compute_orthogonality(self, eigenvectors=None):   # TODO: Check normalization (does it make sense to calculate here?)
-        # Compute eigenvectors if not provided
-        if eigenvectors is None:
-            eigenvectors = self.model(
-                self.states.type(self.dtype).to(self.device))
+    # def compute_orthogonality(self, eigenvectors=None):   # TODO: Check normalization (does it make sense to calculate here?)
+    #     # Compute eigenvectors if not provided
+    #     if eigenvectors is None:
+    #         eigenvectors = self.model(
+    #             self.states.type(self.dtype).to(self.device))
         
-        # Compute inner products between eigenvectors
-        n = eigenvectors.shape[0]
-        inner_products = torch.absolute(
-            torch.einsum('ij,ik->jk', eigenvectors, eigenvectors) / n)   # Notice that you are assuming a uniform distribution over the grid.
+    #     # Compute inner products between eigenvectors
+    #     n = eigenvectors.shape[0]
+    #     inner_products = torch.absolute(
+    #         torch.einsum('ij,ik->jk', eigenvectors, eigenvectors) / n)   # Notice that you are assuming a uniform distribution over the grid.
 
-        # Create orthogonality dictionaries
-        d = eigenvectors.shape[1]
-        norm_dict = {
-            f'norm({i})': inner_products[i,i].item()
-            for i in range(d)
-        }
-        inner_dict = {   # TODO: Move dictionary generation to a separate function (?)
-            f'inner({i},{j})': inner_products[i,j].item()
-            for i, j in product(range(d), range(d))
-            if i > j
-        }
-        return norm_dict, inner_dict
+    #     # Create orthogonality dictionaries
+    #     d = eigenvectors.shape[1]
+    #     norm_dict = {
+    #         f'norm({i})': inner_products[i,i].item()
+    #         for i in range(d)
+    #     }
+    #     inner_dict = {   # TODO: Move dictionary generation to a separate function (?)
+    #         f'inner({i},{j})': inner_products[i,j].item()
+    #         for i, j in product(range(d), range(d))
+    #         if i > j
+    #     }
+    #     return norm_dict, inner_dict
     
-    def metrics(self):
-        # Compute metrics
-        with torch.no_grad():
-            cosine_similarity, eigenvectors = self.compute_ground_truth_cosine_similarity()
-            norm_dict, inner_dict = self.compute_orthogonality(eigenvectors)
+    # def metrics(self):
+    #     # Compute metrics
+    #     with torch.no_grad():
+    #         cosine_similarity, eigenvectors = self.compute_ground_truth_cosine_similarity()
+    #         norm_dict, inner_dict = self.compute_orthogonality(eigenvectors)
         
-        # Create metrics dictionary
-        metrics_dict = {'cosine_similarity': cosine_similarity}
-        metrics_dict.update(norm_dict)
-        metrics_dict.update(inner_dict)
+    #     # Create metrics dictionary
+    #     metrics_dict = {'cosine_similarity': cosine_similarity}
+    #     metrics_dict.update(norm_dict)
+    #     metrics_dict.update(inner_dict)
 
-        return metrics_dict
+    #     return metrics_dict
     
     @abstractmethod
     def loss_function(self, *args, **kwargs):
