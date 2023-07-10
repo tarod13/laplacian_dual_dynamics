@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 
 # Define abstract Trainer class
 class Trainer(ABC):
-    def __init__(self, model, optimizer, replay_buffer, logger, rng_key, **kwargs):
+    def __init__(self, model_funcs, optimizer, replay_buffer, logger, rng_key, **kwargs):
         super().__init__()
 
         # Store model
-        self.model = model
+        self.model_funcs = model_funcs
         self.optimizer = optimizer
         self.replay_buffer = replay_buffer
         self.logger = logger

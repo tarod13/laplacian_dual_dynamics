@@ -133,4 +133,6 @@ dmypy.json
 log/*
 *.png
 *.pkl
+
 rl_lap/data/*
+wandb

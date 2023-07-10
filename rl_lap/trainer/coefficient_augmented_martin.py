@@ -35,13 +35,13 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         return loss
 
     def loss_function(
-            self, model, train_batch, **kwargs
+            self, params, train_batch, **kwargs
         ) -> Tuple[jnp.ndarray]:
 
         # Get representations
         start_representation, end_representation, \
             constraint_start_representation, constraint_end_representation \
-                = self.encode_states(model, train_batch)
+                = self.encode_states(params, train_batch)
         
         # Compute graph loss and regularization
         graph_loss = self.compute_graph_drawing_loss(
@@ -49,20 +49,20 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         )
 
         compute_orthogonality_loss_vmap = jax.vmap(self.compute_orthogonality_loss)
-        orthogonality_loss = compute_orthogonality_loss_vmap(
+        orthogonality_loss_vec = compute_orthogonality_loss_vmap(
             constraint_start_representation, constraint_end_representation,
-        ).mean()
+        )
+        orthogonality_loss = orthogonality_loss_vec.mean()
         regularization_loss = self.regularization_weight * orthogonality_loss
 
         # Compute total loss
         loss = graph_loss + regularization_loss
 
-        # # Store metrics   # TODO: Check if dictionary or straight up arrays are better
-        # metrics_dict = {
-        #     'train_loss': loss.detach().item(),
-        #     'graph_loss': graph_loss.detach().item(),
-        #     'reg_loss': regularization_loss.detach().item(),
-        # }
-        metrics = (loss, graph_loss, regularization_loss)
+        metrics_dict = {
+            'train_loss': loss,
+            'graph_loss': graph_loss,
+            'reg_loss': orthogonality_loss,
+        }
+        metrics = (loss, graph_loss, regularization_loss, metrics_dict)
 
         return loss, metrics

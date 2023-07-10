@@ -114,12 +114,14 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         if self.nn_library in ['haiku', 'haiku-v2']:
             rng = hk.PRNGSequence(self.rng_key)
             sample_input = self._get_train_batch()
-            params = self.model.init(next(rng), sample_input.s1)
+            params = self.model_funcs['forward'].init(next(rng), sample_input.s1)
+            for param in params.keys():
+                print(param)
         elif self.nn_library == 'equinox':
-            params = self.model
+            params = self.model_funcs['forward']
         elif self.nn_library == 'flax':
             sample_input = self._get_train_batch()
-            params = self.model.init(self.rng_key, sample_input.s1)
+            params = self.model_funcs['forward'].init(self.rng_key, sample_input.s1)
         else:
             raise ValueError(f'Unknown neural network library: {self.nn_library}')
         
@@ -130,8 +132,11 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         for step in range(self.total_train_steps):
 
             train_batch = self._get_train_batch()
-            params, opt_state, losses = self.train_step(params, train_batch, opt_state)
+            params, opt_state, metrics = self.train_step(params, train_batch, opt_state)
+            losses = metrics[:-1]
+            metrics_dict = metrics[-1]
             cosine_similarity = self.compute_cosine_similarity(params)
+            metrics_dict['cosine_similarity'] = cosine_similarity
 
             self._global_step += 1   # TODO: Replace with self.step_counter
             self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
@@ -144,6 +149,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 steps_per_sec = timer.steps_per_sec(step)
                 print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
                 self._print_train_info()
+                if self.use_wandb:   # TODO: Use an alternative to wandb if False
+                    self.logger.log(metrics_dict)
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
 
@@ -236,12 +243,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
             # Compute start representations
-            start_representation = self.model.apply(params, train_batch.s1)
-            constraint_start_representation = self.model.apply(params, train_batch.s_neg_1)
+            start_representation = self.model_funcs['forward'].apply(params, train_batch.s1)
+            constraint_start_representation = self.model_funcs['forward'].apply(params, train_batch.s_neg_1)
 
             # Compute end representations
-            end_representation = self.model.apply(params, train_batch.s2)
-            constraint_end_representation = self.model.apply(params, train_batch.s_neg_2)
+            end_representation = self.model_funcs['forward'].apply(params, train_batch.s2)
+            constraint_end_representation = self.model_funcs['forward'].apply(params, train_batch.s_neg_2)
 
         elif self.nn_library == 'equinox':
             # Compute start representations
@@ -280,7 +287,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         # Get approximated eigenvectors
         if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
-            approx_eigvec = self.model.apply(params, states)
+            approx_eigvec = self.model_funcs['forward'].apply(params, states)
         elif self.nn_library == 'equinox':
             approx_eigvec = jax.vmap(params)(states)
         else:

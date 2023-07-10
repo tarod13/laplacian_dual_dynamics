@@ -14,13 +14,21 @@ from rl_lap.tools import flag_tools
 from rl_lap.tools import timer_tools
 from rl_lap.tools import logging_tools
 
-from rl_lap.trainer.coefficient_augmented_martin import (
-    CoefficientAugmentedLaplacianEncoderTrainerM as Trainer
+from rl_lap.trainer import (
+    CALaplacianEncoderTrainerM,
+    DRSSLaplacianEncoderTrainer,
 )   # TODO: Add this class to rl_lap\trainer\__init__.py
 from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
 # Equinox version libraries
-from rl_lap.nets import MLPeqx, MLPflax, MLPhk, generate_hk_module_fn
+from rl_lap.nets import (
+    MLP_eqx, MLP_flax, MLP_hk, DualMLP_hk,
+    generate_hk_module_fn, generate_hk_get_variables_fn,
+)
+import wandb
+
+os.environ['WANDB_API_KEY']='83c25550226f8a86fdd4874026d2c0804cd3dc05'
+os.environ['WANDB_ENTITY']='tarod13'
 
 def _build_model_haiku(d):   # TODO: Choose a better location for this function
     def lap_net(obs):
@@ -47,25 +55,62 @@ def main(hyperparams):
     timer = timer_tools.Timer()
 
     # Create trainer
+    d = hparam_yaml['d']
+    algorithm = hparam_yaml['algorithm']
     nn_library = hparam_yaml['nn_library']
     rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
 
+    if (nn_library != 'haiku-v2') and (algorithm == 'dual-rs'):
+        raise ValueError(f'Algorithm {algorithm} is not supported with neural network library {nn_library} yet.')
+
     if nn_library == 'haiku':
-        model = _build_model_haiku(hparam_yaml['d'])
+        model_funcs = {'forward': _build_model_haiku(d)}
     elif nn_library == 'equinox':
-        model = MLPeqx(2, hparam_yaml['d'], [256, 256], rng_key)   # TODO: Add hyperparameters to config file
+        model_funcs = {'forward': MLP_eqx(2, d, [256, 256], rng_key)}   # TODO: Add hyperparameters to config file   
     elif nn_library == 'flax':
-        model = MLPflax([256, 256, hparam_yaml['d']])
+        model_funcs = {'forward': MLP_flax([256, 256, d])}
     elif nn_library == 'haiku-v2':
-        model = generate_hk_module_fn(MLPhk, hparam_yaml['d'], [256, 256])
+        if algorithm == 'coef-a':
+            model_funcs = {'forward': generate_hk_module_fn(MLP_hk, d, [256, 256])}
+        elif algorithm == 'dual-rs':
+            args_ = [
+                MLP_hk, d, [256, 256], 
+                hparam_yaml['dual_initial_val'], 
+                hparam_yaml['use_lower_triangular'],
+            ]
+            model_funcs = {
+                'forward': generate_hk_module_fn(
+                    DualMLP_hk, *args_),
+                'get_duals': generate_hk_get_variables_fn(
+                    DualMLP_hk, 'get_duals', *args_),
+                'get_errors': generate_hk_get_variables_fn(
+                    DualMLP_hk, 'get_errors', *args_),
+                'get_error_accumulation': generate_hk_get_variables_fn(
+                    DualMLP_hk, 'get_error_accumulation', *args_),
+            }
     else:
         raise ValueError(f'Unknown neural network library: {nn_library}')
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['replay_buffer_size'])
-    logger = None
+
+    if hparam_yaml['use_wandb']:
+        logger = wandb.init(
+            project='laplacian-encoder', 
+            dir=hyperparams.save_dir,
+            config=hparam_yaml,
+        )   
+        # wandb_logger.watch(laplacian_encoder)   # TODO: Test overhead
+    else:
+        logger = None
+
+    if algorithm == 'coef-a':
+        Trainer = CALaplacianEncoderTrainerM
+    elif algorithm == 'dual-rs':
+        Trainer = DRSSLaplacianEncoderTrainer
+
     trainer = Trainer(
-        model=model,
+        model_funcs=model_funcs,
         optimizer=optimizer,
         replay_buffer=replay_buffer,
         logger=logger,
@@ -84,8 +129,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default='coefficient_augmented_martin.yaml', 
+        default='coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
         help='Configuration file to use.'
+    )
+    parser.add_argument(
+        '--save_dir', 
+        type=str, 
+        default=None, 
+        help='Directory to save the model.'
     )
 
     hyperparams = parser.parse_args()
