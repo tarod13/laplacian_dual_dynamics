@@ -19,9 +19,9 @@ class Trainer(ABC):
     def loss_function(self, *args, **kwargs):
         raise NotImplementedError
 
-    @abstractmethod
-    def metrics(self, *args, **kwargs):
-        raise NotImplementedError
+    # @abstractmethod
+    # def metrics(self, *args, **kwargs):
+    #     raise NotImplementedError
 
     @abstractmethod
     def train_step(self, *args, **kwargs):
