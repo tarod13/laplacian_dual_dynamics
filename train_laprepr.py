@@ -47,6 +47,11 @@ def main(hyperparams):
     with open(f'./rl_lap/hyperparam/{hyperparams.config_file}', 'r') as f:
         hparam_yaml = yaml.safe_load(f)   # TODO: Check necessity of hyperparams
 
+    # Replace hparams with command line arguments
+    for k, v in vars(hyperparams).items():
+        if v is not None:
+            hparam_yaml[k] = v
+
     # Set random seed
     np.random.seed(hparam_yaml['seed'])   # TODO: Check if this is the best way to set the seed
     random.seed(hparam_yaml['seed'])
@@ -137,6 +142,24 @@ if __name__ == '__main__':
         type=str, 
         default=None, 
         help='Directory to save the model.'
+    )
+    parser.add_argument(
+        '--env_name', 
+        type=str, 
+        default=None, 
+        help='Environment name.'
+    )
+    parser.add_argument(
+        '--seed', 
+        type=int, 
+        default=None, 
+        help='Seed for random number generators.'
+    )
+    parser.add_argument(
+        '--regularization_weight', 
+        type=float, 
+        default=None, 
+        help='Regularization weight.'
     )
 
     hyperparams = parser.parse_args()
