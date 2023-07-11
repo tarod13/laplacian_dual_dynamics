@@ -9,4 +9,4 @@
 cd ~/projects/def-bowling/diegog/laplacian_dual_dynamics
 module load apptainer
 
-apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B /project/def-mbowling/diegog/laplacian_dual_dynamics/ --pwd /pwd ~/apptainer/py311.sif python3 train_laprepr.py --save_dir ~/logs/laplacian_dual_dynamics/
+apptainer exec --nv -B /home -B $PWD:/pwd -B /projects -B /scratch -B /localscratch -B /projects/def-mbowling/diegog/laplacian_dual_dynamics/ --pwd /pwd ~/apptainer/py311.sif python3 train_laprepr.py --save_dir ~/logs/laplacian_dual_dynamics/
