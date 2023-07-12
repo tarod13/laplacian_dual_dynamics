@@ -144,10 +144,34 @@ if __name__ == '__main__':
         help='Directory to save the model.'
     )
     parser.add_argument(
-        '--env_name', 
-        type=str, 
+        '--n_samples', 
+        type=int, 
         default=None, 
-        help='Environment name.'
+        help='Batch size.'
+    )
+    parser.add_argument(
+        '--batch_size', 
+        type=int, 
+        default=None, 
+        help='Batch size.'
+    )
+    parser.add_argument(
+        '--discount', 
+        type=float, 
+        default=None, 
+        help='Lambda discount used for sampling states.'
+    )
+    parser.add_argument(
+        '--total_train_steps', 
+        type=int, 
+        default=None, 
+        help='Number of training steps for laplacian encoder.'
+    )
+    parser.add_argument(
+        '--max_episode_steps', 
+        type=int, 
+        default=None, 
+        help='Maximum trajectory length.'
     )
     parser.add_argument(
         '--seed', 
@@ -156,12 +180,30 @@ if __name__ == '__main__':
         help='Seed for random number generators.'
     )
     parser.add_argument(
+        '--env_name', 
+        type=str, 
+        default=None, 
+        help='Environment name.'
+    )
+    parser.add_argument(
+        '--lr', 
+        type=float, 
+        default=None, 
+        help='Learning rate of the Adam optimizer used to train the laplacian encoder.'
+    )
+    parser.add_argument(
+        '--hidden_dims',
+        nargs='+',
+        type=int,
+        help='Hidden dimensions of the laplacian encoder.'
+    )
+    parser.add_argument(
         '--regularization_weight', 
         type=float, 
         default=None, 
         help='Regularization weight.'
     )
-
+    
     hyperparams = parser.parse_args()
 
     main(hyperparams)
