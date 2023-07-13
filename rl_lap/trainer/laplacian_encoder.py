@@ -236,6 +236,19 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             print(f'({total_n_steps}/{self.n_samples}) steps collected.')
         time_cost = timer.time_cost()
         print(f'Data collection finished, time cost: {time_cost}s')
+        
+        # Plot visitation counts
+        min_visitation, max_visitation, visitation_entropy, max_entropy, visitation_freq = \
+            self.replay_buffer.plot_visitation_counts(
+                self.env.get_states(),
+                self.env_name,
+                self.env.grid.astype(bool),
+        )
+        time_cost = timer.time_cost()
+        print(f'Visitation evaluated, time cost: {time_cost}s')
+        print(f'Min visitation: {min_visitation}')
+        print(f'Max visitation: {max_visitation}')
+        print(f'Visitation entropy: {visitation_entropy}/{max_entropy}')
     
     def encode_states(
             self, 

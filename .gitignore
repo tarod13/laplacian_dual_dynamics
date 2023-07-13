@@ -136,3 +136,4 @@ log/*
 
 rl_lap/data/*
 wandb
+results

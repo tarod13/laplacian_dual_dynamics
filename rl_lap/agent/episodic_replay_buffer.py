@@ -140,4 +140,88 @@ class EpisodicReplayBuffer:
         for index in episode_indices:
             lengths.append(len(self._episodes[index]))
         return np.array(lengths, dtype=np.int64)
+    
+    def get_visitation_counts(self):
+        """Return the visitation counts of each state."""
+
+        visitation_counts = collections.defaultdict(int)
+        for episode in self._episodes:
+            for step in episode:
+                agent_state = step.step.agent_state['agent'].tolist()   # This assumes that the agent state is a numpy array
+                x = round(agent_state[1], 5)
+                y = round(agent_state[0], 5)
+                visitation_counts[(y,x)] += 1
+        return visitation_counts
+    
+    def plot_visitation_counts(self, states, env_name, grid):
+        """Plot the visitation counts of each state."""
+
+        import os
+        import matplotlib.pyplot as plt
+        from scipy.interpolate import Rbf
+
+        # Get visitation counts
+        visitation_counts = self.get_visitation_counts()
+
+        # Obtain x, y, z coordinates, where z is the visitation count
+        y = states[:,0]
+        x = states[:,1]
+        z = np.zeros_like(x)
+        for i in range(states.shape[0]):
+            agent_state = states[i].tolist()
+            x_coord = round(agent_state[1], 5)
+            y_coord = round(agent_state[0], 5)
+            if (y_coord,x_coord) not in visitation_counts:
+                visitation_counts[(y_coord,x_coord)] = 0
+            z[i] = visitation_counts[(y_coord,x_coord)]
+            
+        # Calculate tile size
+        x_num_tiles = np.unique(x).shape[0]
+        x_tile_size = (np.max(x) - np.min(x)) / x_num_tiles
+        y_num_tiles = np.unique(y).shape[0]
+        y_tile_size = (np.max(y) - np.min(y)) / y_num_tiles
+
+        # Create grid for interpolation
+        ti_x = np.linspace(x.min()-x_tile_size, x.max()+x_tile_size, x_num_tiles+2)
+        ti_y = np.linspace(y.min()-y_tile_size, y.max()+y_tile_size, y_num_tiles+2)
+        XI, YI = np.meshgrid(ti_x, ti_y)
+
+        # Interpolate
+        rbf = Rbf(x, y, z, function='cubic')
+        ZI = rbf(XI, YI)
+        ZI_bounds = 85 * np.ma.masked_where(grid, np.ones_like(ZI))
+        ZI_free = np.ma.masked_where(~grid, ZI)
+        vmin = np.min(z)
+        vmax = np.max(z)
+
+        # Generate color mesh
+        fig, ax = plt.subplots(1,1, figsize=(10,10))
+        mesh = ax.pcolormesh(XI, YI, ZI_free, shading='auto', cmap='coolwarm', vmin=vmin, vmax=vmax)
+        ax.pcolormesh(XI, YI, ZI_bounds, shading='auto', cmap='Greys', vmin=0, vmax=255)
+        ax.set_aspect('equal')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title('Visitation Counts')
+        plt.colorbar(mesh, ax=ax, shrink=0.5, pad=0.05)
+
+        # Save figure
+        fig_path = f'./results/visuals/{env_name}/visitation_counts.pdf'
+
+        if not os.path.exists(os.path.dirname(fig_path)):
+            os.makedirs(os.path.dirname(fig_path))
+
+        plt.savefig(
+            fig_path, 
+            bbox_inches='tight', 
+            dpi=300, 
+            transparent=True, 
+        )
+
+        freq_visitation = z / np.sum(z)
+        entropy = -np.sum(freq_visitation * np.log(freq_visitation+1e-8))
+        max_entropy = -np.log(1/len(freq_visitation))
+        return vmin, vmax, entropy, max_entropy, freq_visitation
+        
 
