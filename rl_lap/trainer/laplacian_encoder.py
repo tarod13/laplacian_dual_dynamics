@@ -133,27 +133,34 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
             train_batch = self._get_train_batch()
             params, opt_state, metrics = self.train_step(params, train_batch, opt_state)
-            losses = metrics[:-1]
-            metrics_dict = metrics[-1]
-            cosine_similarity = self.compute_cosine_similarity(params)
-            metrics_dict['cosine_similarity'] = cosine_similarity
-            metrics_dict['grad_step'] = self._global_step
-            metrics_dict['examples'] = self._global_step * self.batch_size
-            metrics_dict['wall_clock_time'] = timer.time_cost()
-
+            
             self._global_step += 1   # TODO: Replace with self.step_counter
-            self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
-            self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
-            self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
-            self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
 
             # print info
             if step == 0 or (step + 1) % self.print_freq == 0:   # TODO: Replace with self.log_counter
+
+                losses = metrics[:-1]
+                metrics_dict = metrics[-1]
+                cosine_similarity, similarities = self.compute_cosine_similarity(params)
+                metrics_dict['cosine_similarity'] = cosine_similarity
+                for feature in range(len(similarities)):
+                    metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]
+                metrics_dict['grad_step'] = self._global_step
+                metrics_dict['examples'] = self._global_step * self.batch_size
+                metrics_dict['wall_clock_time'] = timer.time_cost()
+
+                
+                self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
+                self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
+                self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
+                self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
+
                 steps_per_sec = timer.steps_per_sec(step)
                 print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
                 self._print_train_info()
                 if self.use_wandb:   # TODO: Use an alternative to wandb if False
                     self.logger.log(metrics_dict)
+                    
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
 
@@ -319,7 +326,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Take the maximum similarity for each eigenvector
         similarities = jnp.maximum(sim_first_dir, sim_second_dir)
         cosine_similarity = similarities.mean()
-        return cosine_similarity
+        return cosine_similarity, similarities
     
     # def compute_orthogonality(self, eigenvectors=None):   # TODO: Check normalization (does it make sense to calculate here?)
     #     # Compute eigenvectors if not provided
