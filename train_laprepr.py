@@ -97,7 +97,7 @@ def main(hyperparams):
         raise ValueError(f'Unknown neural network library: {nn_library}')
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
-    replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['replay_buffer_size'])
+    replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
 
     if hparam_yaml['use_wandb']:
         logger = wandb.init(
@@ -147,7 +147,7 @@ if __name__ == '__main__':
         '--n_samples', 
         type=int, 
         default=None, 
-        help='Batch size.'
+        help='Number of samples.'
     )
     parser.add_argument(
         '--batch_size', 
