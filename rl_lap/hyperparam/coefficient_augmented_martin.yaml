@@ -9,13 +9,13 @@ env_name: null
 env_family: null
 model_cfg: null
 optimizer_cfg: null
-n_samples: 3000000
+n_samples: 100000
 batch_size: 32
 discount: 0.9
 reg_neg: 0.0
-replay_buffer_size: 3000000
+replay_buffer_size: 100000
 log_dir: '/tmp/rl_laprepr/log'
-total_train_steps: 400000
+total_train_steps: 100000
 print_freq: 1000
 save_freq: 10000
 max_episode_steps: 50
@@ -28,5 +28,6 @@ use_wandb: True
 hidden_dims:
   - 256
   - 256
+update_dual_every: 10
 algorithm: coef-a
 regularization_weight: 5.0

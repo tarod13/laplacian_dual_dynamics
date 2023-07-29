@@ -64,46 +64,15 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         return batch
 
     def train_step(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
-        if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
-            # Compute the gradients and associated intermediate metrics
-            grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
-            
-            # Determine the real parameter updates
-            updates, opt_state = self.optimizer.update(grads, opt_state)
+       
+        # Compute the gradients and associated intermediate metrics
+        grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
+        
+        # Determine the real parameter updates
+        updates, opt_state = self.optimizer.update(grads, opt_state)
 
-            # Update the parameters
-            params = optax.apply_updates(params, updates)
-
-        elif self.nn_library == 'equinox':
-            # Compute the gradients and associated intermediate metrics
-            grads, aux = eqx.filter_grad(self.loss_function, has_aux=True)(
-                params, train_batch)
-            
-            # Determine the real parameter updates
-            updates, opt_state = self.optimizer.update(grads, opt_state)
-
-            # Update the parameters
-            params = eqx.apply_updates(params, updates)
-
-        else:
-            raise ValueError(f'Unknown neural network library: {self.nn_library}')
-
-        # # Log losses
-        # is_log_step = self.log_counter  == 0
-        # if is_log_step:
-        #     # Compute additional metrics 
-        #     additional_metrics_dict = self.metrics()
-        #     metrics_dict.update(additional_metrics_dict)
-        #     metrics_dict['grad_steps'] = batch_global_idx
-        #     metrics_dict['examples'] = batch_global_idx * self.batch_size
-        #     # TODO: Add own wall clock time
-
-        #     if self.use_wandb:   # TODO: Use an alternative to wandb
-        #         self.logger.log(metrics_dict)
-
-        # # Update target network
-        # self.update_counters()
-        # self.update_target()
+        # Update the encoder parameters
+        params = optax.apply_updates(params, updates)
 
         return params, opt_state, aux
 
@@ -111,23 +80,21 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         timer = timer_tools.Timer()
 
-        if self.nn_library in ['haiku', 'haiku-v2']:
-            rng = hk.PRNGSequence(self.rng_key)
-            sample_input = self._get_train_batch()
-            params = self.model_funcs['forward'].init(next(rng), sample_input.s1)
-            for param in params.keys():
-                print(param)
-        elif self.nn_library == 'equinox':
-            params = self.model_funcs['forward']
-        elif self.nn_library == 'flax':
-            sample_input = self._get_train_batch()
-            params = self.model_funcs['forward'].init(self.rng_key, sample_input.s1)
-        else:
-            raise ValueError(f'Unknown neural network library: {self.nn_library}')
+        # Initialize the parameters
+        rng = hk.PRNGSequence(self.rng_key)
+        sample_input = self._get_train_batch()
+        encoder_params = self.encoder_fn.init(next(rng), sample_input.s1)
+        params = {
+            'encoder': encoder_params,
+            'duals': self.dual_params,
+        }
+        # Add state info to the params dictionary
+        params = params | self.training_state   # TODO: Handle for old versions of Python
         
-        opt_state = self.optimizer.init(params)
+        # Initialize the optimizer
+        opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?
 
-        # learning begins   # TODO: Better comments
+        # Learning begins   # TODO: Better comments
         timer.set_step(0)
         for step in range(self.total_train_steps):
 
@@ -136,12 +103,18 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             
             self._global_step += 1   # TODO: Replace with self.step_counter
 
-            # print info
-            if step == 0 or (step + 1) % self.print_freq == 0:   # TODO: Replace with self.log_counter
+            # Update the dual parameters
+            is_dual_update_step = ((step + 1) % self.update_dual_every) == 0
+            if is_dual_update_step:
+                params = self.update_duals(params)
+
+            # Save and print info
+            is_log_step = ((step + 1) % self.print_freq) == 0
+            if is_log_step:   # TODO: Replace with self.log_counter
 
                 losses = metrics[:-1]
                 metrics_dict = metrics[-1]
-                cosine_similarity, similarities = self.compute_cosine_similarity(params)
+                cosine_similarity, similarities = self.compute_cosine_similarity(params['encoder'])
                 metrics_dict['cosine_similarity'] = cosine_similarity
                 for feature in range(len(similarities)):
                     metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]
@@ -167,28 +140,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         summary_str = summary_tools.get_summary_str(
                 step=self._global_step, info=self.train_info)
         print(summary_str)   # TODO: Use logging instead of print
-
-        # # Train model
-        # for epoch in tqdm(range(num_epochs)):
-
-        #     # Train for one epoch
-        #     for batch_idx, batch in enumerate(train_loader):
-        #         batch_global_idx = epoch * n_batches_per_epoch + batch_idx
-        #         loss, metrics_dict_ = self.train_step(batch, batch_global_idx)
-                
-        #         # Update profiler
-        #         if profiler is not None:
-        #             profiler.step()
-
-        #     # Log epoch
-        #     if self.use_wandb:
-        #         self.logger.log({'epochs': epoch})
-
-        # # Return final loss and metrics
-        # if loss in locals() and metrics_dict_ in locals():
-        #     return loss, metrics_dict_
-        # else:
-        #     return None, None
 
     def reset_counters(self) -> None:   
         self.step_counter = 0
@@ -258,31 +209,18 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     
     def encode_states(
             self, 
-            params,
+            params_encoder,
             train_batch: Data,
             *args, **kwargs,
         ) -> Tuple[jnp.ndarray]:
 
-        if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
-            # Compute start representations
-            start_representation = self.model_funcs['forward'].apply(params, train_batch.s1)
-            constraint_start_representation = self.model_funcs['forward'].apply(params, train_batch.s_neg_1)
+        # Compute start representations
+        start_representation = self.encoder_fn.apply(params_encoder, train_batch.s1)
+        constraint_start_representation = self.encoder_fn.apply(params_encoder, train_batch.s_neg_1)
 
-            # Compute end representations
-            end_representation = self.model_funcs['forward'].apply(params, train_batch.s2)
-            constraint_end_representation = self.model_funcs['forward'].apply(params, train_batch.s_neg_2)
-
-        elif self.nn_library == 'equinox':
-            # Compute start representations
-            start_representation = jax.vmap(params)(train_batch.s1)
-            constraint_start_representation = jax.vmap(params)(train_batch.s_neg_1)
-
-            # Compute end representations
-            end_representation = jax.vmap(params)(train_batch.s2)
-            constraint_end_representation = jax.vmap(params)(train_batch.s_neg_2)
-
-        else:
-            raise ValueError(f'Unknown neural network library: {self.nn_library}')
+        # Compute end representations
+        end_representation = self.encoder_fn.apply(params_encoder, train_batch.s2)
+        constraint_end_representation = self.encoder_fn.apply(params_encoder, train_batch.s_neg_2)
 
         return (
             start_representation, end_representation, 
@@ -300,7 +238,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 if (self.step_counter % self.steps_to_update_target) == 0:
                     self.model._update_target(soft=False, target_update_rate=1.0)
 
-    def compute_cosine_similarity(self, params):
+    def compute_cosine_similarity(self, params_encoder):
         # Get baseline parameters
         states = self.env.get_states()
         real_eigvec = self.env.get_eigenvectors()[:,:self.d]
@@ -308,13 +246,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         real_eigvec = real_eigvec / real_norms
 
         # Get approximated eigenvectors
-        if self.nn_library in ['haiku', 'haiku-v2', 'flax']:
-            approx_eigvec = self.model_funcs['forward'].apply(params, states)
-        elif self.nn_library == 'equinox':
-            approx_eigvec = jax.vmap(params)(states)
-        else:
-            raise ValueError(f'Unknown neural network library: {self.nn_library}')
-
+        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms
         
@@ -326,45 +258,11 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         similarities = jnp.maximum(sim_first_dir, sim_second_dir)
         cosine_similarity = similarities.mean()
         return cosine_similarity, similarities
-    
-    # def compute_orthogonality(self, eigenvectors=None):   # TODO: Check normalization (does it make sense to calculate here?)
-    #     # Compute eigenvectors if not provided
-    #     if eigenvectors is None:
-    #         eigenvectors = self.model(
-    #             self.states.type(self.dtype).to(self.device))
-        
-    #     # Compute inner products between eigenvectors
-    #     n = eigenvectors.shape[0]
-    #     inner_products = torch.absolute(
-    #         torch.einsum('ij,ik->jk', eigenvectors, eigenvectors) / n)   # Notice that you are assuming a uniform distribution over the grid.
 
-    #     # Create orthogonality dictionaries
-    #     d = eigenvectors.shape[1]
-    #     norm_dict = {
-    #         f'norm({i})': inner_products[i,i].item()
-    #         for i in range(d)
-    #     }
-    #     inner_dict = {   # TODO: Move dictionary generation to a separate function (?)
-    #         f'inner({i},{j})': inner_products[i,j].item()
-    #         for i, j in product(range(d), range(d))
-    #         if i > j
-    #     }
-    #     return norm_dict, inner_dict
-    
-    # def metrics(self):
-    #     # Compute metrics
-    #     with torch.no_grad():
-    #         cosine_similarity, eigenvectors = self.compute_ground_truth_cosine_similarity()
-    #         norm_dict, inner_dict = self.compute_orthogonality(eigenvectors)
-        
-    #     # Create metrics dictionary
-    #     metrics_dict = {'cosine_similarity': cosine_similarity}
-    #     metrics_dict.update(norm_dict)
-    #     metrics_dict.update(inner_dict)
-
-    #     return metrics_dict
-    
     @abstractmethod
     def loss_function(self, *args, **kwargs):
         raise NotImplementedError
     
+    @abstractmethod
+    def update_duals(self, *args, **kwargs):
+        raise NotImplementedError

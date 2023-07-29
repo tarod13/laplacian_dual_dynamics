@@ -1,12 +1,25 @@
 from abc import ABC, abstractmethod
+import jax
+from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
 # Define abstract Trainer class
 class Trainer(ABC):
-    def __init__(self, model_funcs, optimizer, replay_buffer, logger, rng_key, **kwargs):
+    def __init__(self, 
+            encoder_fn: callable,
+            dual_params: jax.Array,
+            training_state: dict, 
+            optimizer: callable, 
+            replay_buffer: EpisodicReplayBuffer, 
+            logger, 
+            rng_key: jax.random.PRNGKey, 
+            **kwargs
+        ):
         super().__init__()
 
         # Store model
-        self.model_funcs = model_funcs
+        self.encoder_fn = encoder_fn
+        self.dual_params = dual_params
+        self.training_state = training_state
         self.optimizer = optimizer
         self.replay_buffer = replay_buffer
         self.logger = logger

@@ -41,7 +41,7 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         # Get representations
         start_representation, end_representation, \
             constraint_start_representation, constraint_end_representation \
-                = self.encode_states(params, train_batch)
+                = self.encode_states(params['encoder'], train_batch)
         
         # Compute graph loss and regularization
         graph_loss = self.compute_graph_drawing_loss(
@@ -66,3 +66,8 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         metrics = (loss, graph_loss, regularization_loss, metrics_dict)
 
         return loss, metrics
+    
+    def update_duals(self, params, **kwargs):
+        '''Leave params unchanged'''
+
+        return params

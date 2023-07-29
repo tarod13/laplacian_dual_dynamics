@@ -6,6 +6,7 @@ import random
 import numpy as np
 
 import jax
+import jax.numpy as jnp
 import haiku as hk
 import optax
 
@@ -21,10 +22,8 @@ from rl_lap.trainer import (
 )   # TODO: Add this class to rl_lap\trainer\__init__.py
 from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
-# Equinox version libraries
 from rl_lap.nets import (
-    MLP_eqx, MLP_flax, MLP_hk, DualMLP_hk,
-    generate_hk_module_fn, generate_hk_get_variables_fn,
+    MLP, generate_hk_module_fn, generate_hk_get_variables_fn,
 )
 import wandb
 
@@ -70,33 +69,17 @@ def main(hyperparams):
     if (nn_library != 'haiku-v2') and (algorithm == 'dual-rs'):
         raise ValueError(f'Algorithm {algorithm} is not supported with neural network library {nn_library} yet.')
 
-    if nn_library == 'haiku':
-        model_funcs = {'forward': _build_model_haiku(d)}
-    elif nn_library == 'equinox':
-        model_funcs = {'forward': MLP_eqx(2, d, [256, 256], rng_key)}   # TODO: Add hyperparameters to config file   
-    elif nn_library == 'flax':
-        model_funcs = {'forward': MLP_flax([256, 256, d])}
-    elif nn_library == 'haiku-v2':
-        if algorithm == 'coef-a':
-            model_funcs = {'forward': generate_hk_module_fn(MLP_hk, d, hidden_dims)}
-        elif algorithm == algorithm in ['dual', 'dual-rs']:
-            args_ = [
-                MLP_hk, d, hidden_dims, 
-                hparam_yaml['dual_initial_val'], 
-                hparam_yaml['use_lower_triangular'],
-            ]
-            model_funcs = {
-                'forward': generate_hk_module_fn(
-                    DualMLP_hk, *args_),
-                'get_duals': generate_hk_get_variables_fn(
-                    DualMLP_hk, 'get_duals', *args_),
-                'get_errors': generate_hk_get_variables_fn(
-                    DualMLP_hk, 'get_errors', *args_),
-                'get_error_accumulation': generate_hk_get_variables_fn(
-                    DualMLP_hk, 'get_error_accumulation', *args_),
-            }
-    else:
-        raise ValueError(f'Unknown neural network library: {nn_library}')
+    encoder_fn = generate_hk_module_fn(MLP, d, hidden_dims)
+    dual_params = None
+    training_state = {}
+    
+    if algorithm in ['dual', 'dual-rs']:
+        # Initialize dual parameters as lower triangular matrix with ones
+        dual_params = jnp.tril(jnp.ones((d, d)), k=0)
+
+        # Initialize state dict with error and accumulated error matrices
+        training_state['error'] = jnp.zeros((d, d))
+        training_state['acc_error'] = jnp.zeros((d, d))
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
@@ -119,7 +102,9 @@ def main(hyperparams):
         Trainer = DualLaplacianEncoderTrainer
 
     trainer = Trainer(
-        model_funcs=model_funcs,
+        encoder_fn=encoder_fn,
+        dual_params=dual_params,
+        training_state=training_state,
         optimizer=optimizer,
         replay_buffer=replay_buffer,
         logger=logger,
@@ -138,7 +123,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default= 'dual.yaml', #'dual.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
+        default= 'coefficient_augmented_martin.yaml', #'dual.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
         help='Configuration file to use.'
     )
     parser.add_argument(
