@@ -74,7 +74,10 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Update the encoder parameters
         params = optax.apply_updates(params, updates)
 
-        return params, opt_state, aux
+        # Update the training state
+        params = self.update_training_state(params, aux[1])
+
+        return params, opt_state, aux[0]
 
     def train(self) -> None:
 
@@ -265,4 +268,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     
     @abstractmethod
     def update_duals(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def update_training_state(self, *args, **kwargs):
         raise NotImplementedError

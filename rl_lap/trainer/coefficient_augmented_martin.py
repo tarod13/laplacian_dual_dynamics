@@ -64,10 +64,16 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
             'reg_loss': orthogonality_loss,
         }
         metrics = (loss, graph_loss, regularization_loss, metrics_dict)
+        aux = (metrics, None)
 
-        return loss, metrics
+        return loss, aux
     
-    def update_duals(self, params, **kwargs):
+    def update_duals(self, params, *args, **kwargs):
+        '''Leave params unchanged'''
+
+        return params
+    
+    def update_training_state(self, params, *args, **kwargs):
         '''Leave params unchanged'''
 
         return params

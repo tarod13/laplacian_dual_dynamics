@@ -46,8 +46,7 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
     
     def compute_orthogonality_loss(self, params, orthogonality_error_matrix):
         # Compute the loss
-        log_dual_variables = self.model_funcs['get_duals'].apply(params)
-        dual_variables = jnp.tril(jnp.exp(log_dual_variables))
+        dual_variables = params['duals']
 
         error_matrix = jnp.tril(orthogonality_error_matrix - self.orthogonality_tolerance)
         orthogonality_loss = (jax.lax.stop_gradient(dual_variables) * error_matrix).sum()
@@ -61,18 +60,15 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         
         return orthogonality_loss, error_matrix, dual_dict
     
-    # def update_error_estimates(self, params, errors):   # TODO: Handle better the fact that params are an array
-    #     old = self.model_funcs['get_errors'].apply(params)
-    #     update = old + self.error_estimate_update_rate * (errors - old)
-    #     for key, value in params.items():
-    #         if value == old:
-    #             params[key] = update
-    #     error_dict = {
-    #         f'error({i},{j})': update[i,j]
-    #         for i, j in product(range(self.d), range(self.d))
-    #         if i >= j
-    #     }
-    #     return error_dict
+    def update_error_estimates(self, params, errors):   # TODO: Handle better the fact that params are an array
+        old = params['error']
+        update = old + self.error_estimate_update_rate * (errors - old)
+        error_dict = {
+            f'error({i},{j})': update[i,j]
+            for i, j in product(range(self.d), range(self.d))
+            if i >= j
+        }
+        return error_dict, update
 
     def loss_function(
             self, params, train_batch, **kwargs
@@ -81,7 +77,7 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         # Get representations
         start_representation, end_representation, \
             constraint_representation_1, constraint_representation_2 \
-                = self.encode_states(params, train_batch)
+                = self.encode_states(params['encoder'], train_batch)
         
         # Compute primal loss
         graph_loss = self.compute_graph_drawing_loss(
@@ -95,8 +91,8 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         orthogonality_loss, error_matrix, dual_dict = self.compute_orthogonality_loss(
            params, orthogonality_error_matrix)
         
-        # # Update error estimates
-        # error_dict = self.update_error_estimates(params, error_matrix)
+        # Update error estimates
+        error_dict, error_update = self.update_error_estimates(params, error_matrix)
 
         # Compute total loss
         lagrangian = graph_loss + orthogonality_loss
@@ -108,7 +104,19 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         }
         metrics_dict.update(inner_dict)
         metrics_dict.update(dual_dict)
-        # metrics_dict.update(error_dict)
+        metrics_dict.update(error_dict)
         metrics = (loss, graph_loss, orthogonality_loss, metrics_dict)
+        aux = (metrics, error_update)
 
-        return loss, metrics
+        return loss, aux
+    
+    def update_duals(self, params, *args, **kwargs):
+        '''Leave params unchanged'''
+
+        return params
+    
+    def update_training_state(self, params, error_update):
+        '''Update error estimates'''
+
+        params['error'] = error_update
+        return params
