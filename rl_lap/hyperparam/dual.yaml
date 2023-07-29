@@ -36,3 +36,6 @@ orthogonality_tolerance: 0.001
 optimize_dual_logs: True
 use_lower_triangular: False   # Add the option to use lower triangular matrix
 error_estimate_update_rate: 0.001
+lr_duals: 0.001
+min_duals: 0.000001
+max_duals: 10.0

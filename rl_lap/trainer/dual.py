@@ -110,9 +110,17 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
 
         return loss, aux
     
-    def update_duals(self, params, *args, **kwargs):
+    def update_duals(self, params):
         '''Leave params unchanged'''
-
+        error_matrix = params['error']
+        dual_variables = params['duals']
+        dual_contraint_error = jnp.tril(error_matrix * dual_variables)
+        updated_duals = jnp.clip(
+            dual_variables + self.lr_duals * dual_contraint_error,
+            a_min=self.min_duals,
+            a_max=self.max_duals,
+        )   # TODO: Cliping is probably not the best way to handle this
+        params['duals'] = jnp.tril(updated_duals)
         return params
     
     def update_training_state(self, params, error_update):
