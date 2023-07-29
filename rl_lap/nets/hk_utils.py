@@ -10,10 +10,10 @@ def generate_hk_module_fn(module_class: hk.Module, *args, **kwargs) -> Callable:
     return hk.without_apply_rng(hk.transform(module_fn))
 
 def generate_hk_get_variables_fn(module_class: hk.Module, function_name: str, *args, **kwargs) -> Callable:
-    def module_fn() -> jax.Array:
+    def module_fn(*fn_args) -> jax.Array:
         module = module_class(*args, **kwargs)
         module_fn_ = getattr(module, function_name)
-        return module_fn_()
+        return module_fn_(*fn_args)
     return hk.without_apply_rng(hk.transform(module_fn))
 
 def update_params(params, updates):

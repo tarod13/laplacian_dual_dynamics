@@ -17,6 +17,7 @@ from rl_lap.tools import logging_tools
 from rl_lap.trainer import (
     CALaplacianEncoderTrainerM,
     DRSSLaplacianEncoderTrainer,
+    DualLaplacianEncoderTrainer,
 )   # TODO: Add this class to rl_lap\trainer\__init__.py
 from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
@@ -64,6 +65,7 @@ def main(hyperparams):
     algorithm = hparam_yaml['algorithm']
     nn_library = hparam_yaml['nn_library']
     rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
+    hidden_dims = hparam_yaml['hidden_dims']
 
     if (nn_library != 'haiku-v2') and (algorithm == 'dual-rs'):
         raise ValueError(f'Algorithm {algorithm} is not supported with neural network library {nn_library} yet.')
@@ -76,10 +78,10 @@ def main(hyperparams):
         model_funcs = {'forward': MLP_flax([256, 256, d])}
     elif nn_library == 'haiku-v2':
         if algorithm == 'coef-a':
-            model_funcs = {'forward': generate_hk_module_fn(MLP_hk, d, [256, 256])}
-        elif algorithm == 'dual-rs':
+            model_funcs = {'forward': generate_hk_module_fn(MLP_hk, d, hidden_dims)}
+        elif algorithm == algorithm in ['dual', 'dual-rs']:
             args_ = [
-                MLP_hk, d, [256, 256], 
+                MLP_hk, d, hidden_dims, 
                 hparam_yaml['dual_initial_val'], 
                 hparam_yaml['use_lower_triangular'],
             ]
@@ -113,6 +115,8 @@ def main(hyperparams):
         Trainer = CALaplacianEncoderTrainerM
     elif algorithm == 'dual-rs':
         Trainer = DRSSLaplacianEncoderTrainer
+    elif algorithm == 'dual':
+        Trainer = DualLaplacianEncoderTrainer
 
     trainer = Trainer(
         model_funcs=model_funcs,
@@ -134,7 +138,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default='coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
+        default= 'dual.yaml', #'dual.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
         help='Configuration file to use.'
     )
     parser.add_argument(

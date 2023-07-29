@@ -148,7 +148,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 metrics_dict['grad_step'] = self._global_step
                 metrics_dict['examples'] = self._global_step * self.batch_size
                 metrics_dict['wall_clock_time'] = timer.time_cost()
-
                 
                 self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
                 self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]

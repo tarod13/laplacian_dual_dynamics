@@ -23,7 +23,7 @@ class LowerTriangularParameterMatrix(hk.Module):
         '''Generate matrix with parameters in its lower triangular part.'''
         initializer = hk.initializers.Constant(self.initial_weight)
         dual_variables = hk.get_parameter(
-            "duals", 
+            "params", 
             shape=[self.number_params], 
             dtype=np.float32, 
             init=initializer,
@@ -49,7 +49,7 @@ class ParameterMatrix(hk.Module):
         '''Generate matrix with parameters in its lower triangular part.'''
         initializer = hk.initializers.Constant(self.initial_weight)
         dual_variables = jnp.tril(hk.get_parameter(
-            "duals", 
+            "params", 
             shape=[self.dim_matrix, self.dim_matrix], 
             dtype=np.float32, 
             init=initializer,
