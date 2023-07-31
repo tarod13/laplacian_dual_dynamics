@@ -19,7 +19,7 @@ total_train_steps: 400000
 print_freq: 1000
 save_freq: 10000
 max_episode_steps: 50
-seed: 1935
+seed: 1234
 env_name: GridRoom-1
 env_family: Grid-v0
 nn_library: haiku-v2
@@ -28,6 +28,8 @@ use_wandb: True
 hidden_dims:
   - 256
   - 256
-update_dual_every: 10
+update_dual_every: 400000
+activation: relu
 algorithm: coef-a
 regularization_weight: 5.0
+use_norm_normalization: True

@@ -48,8 +48,13 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         # Compute the loss
         dual_variables = params['duals']
 
+        if self.use_error_mean:
+            coeff_vector = jnp.arange(self.d, 0, -1)
+        else:
+            coeff_vector = jnp.ones(self.d)
+
         error_matrix = jnp.tril(orthogonality_error_matrix - self.orthogonality_tolerance)
-        orthogonality_loss = (jax.lax.stop_gradient(dual_variables) * error_matrix).sum()
+        orthogonality_loss = (jax.lax.stop_gradient(dual_variables) * error_matrix).dot(coeff_vector).sum()
 
         # Generate dictionary with dual variables and errors for logging 
         dual_dict = {
@@ -111,15 +116,41 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         return loss, aux
     
     def update_duals(self, params):
-        '''Leave params unchanged'''
+        '''
+            Update dual variables using some approximation 
+            of the gradient of the lagrangian.
+        '''
         error_matrix = params['error']
         dual_variables = params['duals']
-        dual_contraint_error = jnp.tril(error_matrix * dual_variables)
+
+        # Calculate updated duals depending on whether 
+        # we optimize the log of the duals or not.
+        if self.optimize_dual_logs:
+            log_duals = jnp.log(dual_variables)
+            updates = jnp.tril(error_matrix)
+            if self.normalize_dual_updates:
+                update_norm = jnp.linalg.norm(updates)
+            else:
+                update_norm = 1
+            updated_log_duals = log_duals + self.lr_duals * updates / update_norm
+            updated_duals = jnp.exp(updated_log_duals)
+        else:
+            updates = jnp.tril(error_matrix * dual_variables)
+            if self.normalize_dual_updates:
+                update_norm = jnp.linalg.norm(updates)
+            else:
+                update_norm = 1
+
+            updated_duals = dual_variables + self.lr_duals * updates / update_norm
+
+        # Clip duals to be in the range [min_duals, max_duals]
         updated_duals = jnp.clip(
-            dual_variables + self.lr_duals * dual_contraint_error,
+            updated_duals,
             a_min=self.min_duals,
             a_max=self.max_duals,
         )   # TODO: Cliping is probably not the best way to handle this
+
+        # Update params, making sure that the duals are lower triangular
         params['duals'] = jnp.tril(updated_duals)
         return params
     

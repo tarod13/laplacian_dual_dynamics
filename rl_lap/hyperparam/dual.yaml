@@ -15,11 +15,11 @@ discount: 0.9
 reg_neg: 0.0
 replay_buffer_size: 100000
 log_dir: '/tmp/rl_laprepr/log'
-total_train_steps: 400000
+total_train_steps: 4000000
 print_freq: 1000
 save_freq: 10000
 max_episode_steps: 50
-seed: 1935
+seed: 1234
 env_name: GridRoom-1
 env_family: Grid-v0
 nn_library: haiku-v2
@@ -28,7 +28,8 @@ use_wandb: True
 hidden_dims:
   - 256
   - 256
-update_dual_every: 10
+update_dual_every: 10000
+activation: leaky_relu
 algorithm: dual
 dual_initial_val: 1.0
 detach_symmetric_constraints: True
@@ -36,6 +37,8 @@ orthogonality_tolerance: 0.001
 optimize_dual_logs: True
 use_lower_triangular: False   # Add the option to use lower triangular matrix
 error_estimate_update_rate: 0.001
-lr_duals: 0.001
-min_duals: 0.000001
-max_duals: 10.0
+lr_duals: 10.0
+min_duals: 0
+max_duals: 10
+normalize_dual_updates: False
+use_error_mean: True

@@ -63,21 +63,21 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         batch = Data(s_pos_1, s_pos_2, s_neg_1, s_neg_2)
         return batch
 
-    def train_step(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
+    def train_step(self, params_encoder, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
        
         # Compute the gradients and associated intermediate metrics
-        grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
+        grads, aux = jax.grad(self.loss_function, has_aux=True)(params_encoder, train_batch)
         
         # Determine the real parameter updates
         updates, opt_state = self.optimizer.update(grads, opt_state)
 
         # Update the encoder parameters
-        params = optax.apply_updates(params, updates)
+        params_encoder = optax.apply_updates(params_encoder, updates)
 
         # Update the training state
-        params = self.update_training_state(params, aux[1])
+        self.update_training_state(aux[1])
 
-        return params, opt_state, aux[0]
+        return params_encoder, opt_state, aux[0]
 
     def train(self) -> None:
 
@@ -86,30 +86,24 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Initialize the parameters
         rng = hk.PRNGSequence(self.rng_key)
         sample_input = self._get_train_batch()
-        encoder_params = self.encoder_fn.init(next(rng), sample_input.s1)
-        params = {
-            'encoder': encoder_params,
-            'duals': self.dual_params,
-        }
-        # Add state info to the params dictionary
-        params = params | self.training_state   # TODO: Handle for old versions of Python
+        params_encoder = self.encoder_fn.init(next(rng), sample_input.s1)
         
         # Initialize the optimizer
-        opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?
+        opt_state = self.optimizer.init(params_encoder)   # TODO: Should params_encoder be the only ones updated by the optimizer?
 
         # Learning begins   # TODO: Better comments
         timer.set_step(0)
         for step in range(self.total_train_steps):
 
             train_batch = self._get_train_batch()
-            params, opt_state, metrics = self.train_step(params, train_batch, opt_state)
+            params_encoder, opt_state, metrics = self.train_step(params_encoder, train_batch, opt_state)
             
             self._global_step += 1   # TODO: Replace with self.step_counter
 
             # Update the dual parameters
             is_dual_update_step = ((step + 1) % self.update_dual_every) == 0
             if is_dual_update_step:
-                params = self.update_duals(params)
+                self.update_duals()
 
             # Save and print info
             is_log_step = ((step + 1) % self.print_freq) == 0
@@ -117,7 +111,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
                 losses = metrics[:-1]
                 metrics_dict = metrics[-1]
-                cosine_similarity, similarities = self.compute_cosine_similarity(params['encoder'])
+                cosine_similarity, similarities = self.compute_cosine_similarity(params_encoder)
                 metrics_dict['cosine_similarity'] = cosine_similarity
                 for feature in range(len(similarities)):
                     metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]
