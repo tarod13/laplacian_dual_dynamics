@@ -9,11 +9,11 @@ env_name: null
 env_family: null
 model_cfg: null
 optimizer_cfg: null
-n_samples: 100000
+n_samples: 1000000
 batch_size: 32
 discount: 0.9
 reg_neg: 0.0
-replay_buffer_size: 100000
+replay_buffer_size: 1000000
 log_dir: '/tmp/rl_laprepr/log'
 total_train_steps: 400000
 print_freq: 1000

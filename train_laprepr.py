@@ -78,8 +78,8 @@ def main(hyperparams):
         dual_params = jnp.tril(jnp.ones((d, d)), k=0)
 
         # Initialize state dict with error and accumulated error matrices
-        training_state['error'] = jnp.zeros((d, d))
-        training_state['acc_error'] = jnp.zeros((d, d))
+        training_state['error'] = None
+        training_state['acc_error'] = None
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default= 'coefficient_augmented_martin.yaml', #'dual.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
+        default= 'dual.yaml', #'dual.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
         help='Configuration file to use.'
     )
     parser.add_argument(
