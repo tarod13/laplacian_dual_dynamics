@@ -39,13 +39,13 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         return loss
 
     def loss_function(
-            self, params_encoder, train_batch, **kwargs
+            self, params, train_batch, **kwargs
         ) -> Tuple[jnp.ndarray]:
 
         # Get representations
         start_representation, end_representation, \
             constraint_start_representation, constraint_end_representation \
-                = self.encode_states(params_encoder, train_batch)
+                = self.encode_states(params['encoder'], train_batch)
         
         # Compute graph loss and regularization
         graph_loss = self.compute_graph_drawing_loss(
@@ -75,9 +75,9 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
     def update_duals(self, params, *args, **kwargs):
         '''Leave params unchanged'''
 
-        pass
+        return params
     
     def update_training_state(self, params, *args, **kwargs):
         '''Leave params unchanged'''
 
-        pass
+        return params

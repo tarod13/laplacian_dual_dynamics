@@ -63,21 +63,28 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         batch = Data(s_pos_1, s_pos_2, s_neg_1, s_neg_2)
         return batch
 
-    def train_step(self, params_encoder, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
+    def train_step(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
        
         # Compute the gradients and associated intermediate metrics
-        grads, aux = jax.grad(self.loss_function, has_aux=True)(params_encoder, train_batch)
+        grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
+
+        # Calculate grad norms
+        grad_norms = jax.tree_map(jnp.linalg.norm, grads)
+
+        # Add grad norms to the training info
+        for k, v in grad_norms.items():
+            aux[0][-1][k + '_grad_norm'] = v
         
         # Determine the real parameter updates
         updates, opt_state = self.optimizer.update(grads, opt_state)
 
         # Update the encoder parameters
-        params_encoder = optax.apply_updates(params_encoder, updates)
+        params = optax.apply_updates(params, updates)
 
         # Update the training state
-        self.update_training_state(aux[1])
+        params = self.update_training_state(params, aux[1])
 
-        return params_encoder, opt_state, aux[0]
+        return params, opt_state, aux[0]
 
     def train(self) -> None:
 
@@ -86,24 +93,33 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Initialize the parameters
         rng = hk.PRNGSequence(self.rng_key)
         sample_input = self._get_train_batch()
-        params_encoder = self.encoder_fn.init(next(rng), sample_input.s1)
+        encoder_params = self.encoder_fn.init(next(rng), sample_input.s1)
+        params = {
+            'encoder': encoder_params,
+            'duals': self.dual_params,
+        }
+        # Add state info to the params dictionary
+        params = params | self.training_state   # TODO: Handle for old versions of Python
         
         # Initialize the optimizer
-        opt_state = self.optimizer.init(params_encoder)   # TODO: Should params_encoder be the only ones updated by the optimizer?
+        opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?
 
         # Learning begins   # TODO: Better comments
         timer.set_step(0)
         for step in range(self.total_train_steps):
 
             train_batch = self._get_train_batch()
-            params_encoder, opt_state, metrics = self.train_step(params_encoder, train_batch, opt_state)
+            params, opt_state, metrics = self.train_step(params, train_batch, opt_state)
             
             self._global_step += 1   # TODO: Replace with self.step_counter
 
             # Update the dual parameters
-            is_dual_update_step = ((step + 1) % self.update_dual_every) == 0
+            is_dual_update_step = (
+                (((step + 1) % self.update_dual_every) == 0)
+                and (step > self.update_dual_after)
+            )
             if is_dual_update_step:
-                self.update_duals()
+                params = self.update_duals(params)
 
             # Save and print info
             is_log_step = ((step + 1) % self.print_freq) == 0
@@ -111,7 +127,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
                 losses = metrics[:-1]
                 metrics_dict = metrics[-1]
-                cosine_similarity, similarities = self.compute_cosine_similarity(params_encoder)
+                cosine_similarity, similarities = self.compute_cosine_similarity(params['encoder'])
                 metrics_dict['cosine_similarity'] = cosine_similarity
                 for feature in range(len(similarities)):
                     metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]

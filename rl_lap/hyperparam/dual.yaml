@@ -28,7 +28,7 @@ use_wandb: True
 hidden_dims:
   - 256
   - 256
-update_dual_every: 400000
+update_dual_every: 1
 activation: relu
 algorithm: dual
 dual_initial_val: 1.0
@@ -36,9 +36,11 @@ detach_symmetric_constraints: True
 orthogonality_tolerance: 0.001
 optimize_dual_logs: True
 use_lower_triangular: False   # Add the option to use lower triangular matrix
-error_estimate_update_rate: 0.001
-lr_duals: 10.0
+error_estimate_update_rate: 0.1
+lr_duals: 0.0001
 min_duals: 0
-max_duals: 10
+max_duals: 1000000
 normalize_dual_updates: False
-use_error_mean: True
+implicit_orthogonality_weight: 1.0
+use_error_mean: False
+update_dual_after: 0

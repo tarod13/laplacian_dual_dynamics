@@ -78,8 +78,8 @@ def main(hyperparams):
         dual_params = jnp.tril(jnp.ones((d, d)), k=0)
 
         # Initialize state dict with error and accumulated error matrices
-        training_state['error'] = None
-        training_state['acc_error'] = None
+        training_state['error'] = jnp.zeros((d, d))
+        training_state['acc_error'] = jnp.zeros((d, d))
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
