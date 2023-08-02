@@ -99,7 +99,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             'duals': self.dual_params,
         }
         # Add state info to the params dictionary
-        params = params | self.training_state   # TODO: Handle for old versions of Python
+        params.update(self.training_state)
         
         # Initialize the optimizer
         opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?

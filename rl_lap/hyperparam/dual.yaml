@@ -34,12 +34,12 @@ algorithm: dual
 dual_initial_val: 1.0
 detach_symmetric_constraints: True
 orthogonality_tolerance: 0.001
-optimize_dual_logs: True
+optimize_dual_logs: False
 use_lower_triangular: False   # Add the option to use lower triangular matrix
-error_estimate_update_rate: 0.1
-lr_duals: 0.0001
+error_estimate_update_rate: 0.001
+lr_duals: 0.001
 min_duals: 0
-max_duals: 1000000
+max_duals: 10
 normalize_dual_updates: False
 implicit_orthogonality_weight: 1.0
 use_error_mean: False
