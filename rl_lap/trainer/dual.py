@@ -122,25 +122,20 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         '''
         error_matrix = params['error']
         dual_variables = params['duals']
+        updates = jnp.tril(error_matrix)
+
+        if self.normalize_dual_updates:
+            update_norm = jnp.linalg.norm(updates)
+        else:
+            update_norm = 1
 
         # Calculate updated duals depending on whether 
         # we optimize the log of the duals or not.
         if self.optimize_dual_logs:
             log_duals = jnp.log(dual_variables)
-            updates = jnp.tril(error_matrix)
-            if self.normalize_dual_updates:
-                update_norm = jnp.linalg.norm(updates)
-            else:
-                update_norm = 1
             updated_log_duals = log_duals + self.lr_duals * updates / update_norm
             updated_duals = jnp.exp(updated_log_duals)
         else:
-            updates = jnp.tril(error_matrix * dual_variables)
-            if self.normalize_dual_updates:
-                update_norm = jnp.linalg.norm(updates)
-            else:
-                update_norm = 1
-
             updated_duals = dual_variables + self.lr_duals * updates / update_norm
 
         # Clip duals to be in the range [min_duals, max_duals]
