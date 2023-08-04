@@ -20,7 +20,7 @@ print_freq: 1000
 save_freq: 10000
 max_episode_steps: 50
 seed: 1234
-env_name: GridRoom-64
+env_name: GridRoom-1
 env_family: Grid-v0
 nn_library: haiku-v2
 lr: 0.0001
@@ -52,3 +52,4 @@ use_decreasing_dual_lr: True
 dual_lr_decay_rate: 0.72
 decay_only_diagonal_duals: True
 use_additive_duals: True
+use_cosine_similarity_v2: True

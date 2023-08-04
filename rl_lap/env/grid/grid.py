@@ -307,6 +307,10 @@ class GridEnv(gym.Env):
         # Choose directions of eigenvectors
         eigvecs = np.sign(eigvecs[0,:].reshape(1,-1)) * eigvecs
 
+        # Round eigenvalues to 5 decimals to avoid numerical
+        # errors and consider multiplicities larger than 1
+        eigvals = np.round(eigvals, 5)
+
         return eigvals, eigvecs
     
     def get_states(self):
