@@ -68,7 +68,7 @@ class GridEnv(gym.Env):
         for i, pos in enumerate(self._states):
             self._state_indices[tuple(pos)] = i
         self._dyn_mat = self._maze_to_uniform_policy_dynamics()
-        self._eigvec = self._compute_eigenvectors()
+        self._eigval, self._eigvec = self._compute_eigenvectors()
 
     def _get_obs(self):
         # Get the agent's location after applying the transformations
@@ -307,11 +307,14 @@ class GridEnv(gym.Env):
         # Choose directions of eigenvectors
         eigvecs = np.sign(eigvecs[0,:].reshape(1,-1)) * eigvecs
 
-        return eigvecs
+        return eigvals, eigvecs
     
     def get_states(self):
         return self._states
     
     def get_eigenvectors(self):
         return self._eigvec
+    
+    def get_eigenvalues(self):
+        return self._eigval
     

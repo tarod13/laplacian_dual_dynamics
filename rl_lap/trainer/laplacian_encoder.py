@@ -121,6 +121,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             if is_dual_update_step:
                 params = self.update_duals(params)
 
+            is_dual_reset_step = (
+                (((step + 1) % self.reset_dual_every) == 0)
+                and (step > self.update_dual_after)
+            )
+            if is_dual_reset_step:
+                params = self.reset_duals(params)
+
             # Save and print info
             is_log_step = ((step + 1) % self.print_freq) == 0
             if is_log_step:   # TODO: Replace with self.log_counter

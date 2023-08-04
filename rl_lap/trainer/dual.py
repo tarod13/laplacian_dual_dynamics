@@ -47,6 +47,15 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
     def compute_orthogonality_loss(self, params, orthogonality_error_matrix):
         # Compute the loss
         dual_variables = params['duals']
+        if self.use_additive_duals:
+            # Obtain diagonal of dual variables
+            duals_diag = jnp.diag(dual_variables)
+
+            # Obtain cumulative sum of diagonal
+            duals_diag_cumsum = jnp.cumsum(duals_diag, axis=0)
+
+            # Obtain the dual variables
+            dual_variables = jnp.tril(dual_variables, k=-1) + jnp.diag(duals_diag_cumsum)
 
         if self.use_error_mean:
             coeff_vector = jnp.arange(self.d, 0, -1)
@@ -128,6 +137,23 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
             update_norm = jnp.linalg.norm(updates)
         else:
             update_norm = 1
+        
+        if self.use_decreasing_dual_lr:
+            if self.dual_lr_decay_rate != 1:
+                coeff_vector = jnp.array([self.dual_lr_decay_rate**i for i in range(self.d)])
+            else:
+                coeff_vector = jnp.arange(self.d, 0, -1) / self.d
+        else:
+            coeff_vector = jnp.ones(self.d)
+        
+        if self.decay_only_diagonal_duals:
+            # Matrix with coefficients only in the diagonal
+            diag_matrix = jnp.diag(coeff_vector)
+            ones_matrix = jnp.ones((self.d, self.d))
+            diag_matrix = diag_matrix + jnp.tril(ones_matrix, k=-1)
+            updates = updates * diag_matrix
+        else:
+            updates = updates * coeff_vector.reshape(-1, 1)
 
         # Calculate updated duals depending on whether 
         # we optimize the log of the duals or not.
@@ -146,6 +172,26 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         )   # TODO: Cliping is probably not the best way to handle this
 
         # Update params, making sure that the duals are lower triangular
+        params['duals'] = jnp.tril(updated_duals)
+        return params
+    
+    def reset_duals(self, params):
+        """
+            Reset dual variables that are larger than the 
+            initial value to the initial value.
+        """
+        dual_variables = params['duals']
+        
+        if self.constant_reset:
+            replace_matrix = self.dual_initial_val * jnp.ones_like(dual_variables)
+        else:
+            replace_matrix = self.reset_proportion * dual_variables
+
+        updated_duals = jnp.where(
+            dual_variables > self.dual_threshold,
+            replace_matrix,
+            dual_variables,
+        )
         params['duals'] = jnp.tril(updated_duals)
         return params
     
