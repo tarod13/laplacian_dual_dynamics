@@ -314,12 +314,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         
         # Compute cosine similarities for both directions
         unique_real_eigval = sorted(eigvec_dict.keys(), reverse=True)
-        print(f'Unique eigenvalues: {unique_real_eigval}')
+        # print(f'Unique eigenvalues: {unique_real_eigval}')
         id_ = 0
         similarities = []
         for i, eigval in enumerate(unique_real_eigval):
             multiplicity = len(eigvec_dict[eigval])
-            print(f'Eigenvalue {eigval} has multiplicity {multiplicity}')
+            # print(f'Eigenvalue {eigval} has multiplicity {multiplicity}')
             
             # Compute cosine similarity
             if multiplicity == 1:
@@ -339,7 +339,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 
                 # Compute cosine similarity
                 for j in range(multiplicity):
-                    pos_sim = (current_real_eigvec[j]).dot(optimal_approx_eigvec[j])
+                    pos_sim = (current_real_eigvec[j]).dot(optimal_approx_eigvec[j].reshape(-1))
                     similarities.append(jnp.maximum(pos_sim, -pos_sim))
 
             id_ += multiplicity
@@ -370,18 +370,18 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         rotated_eigvec = []
 
         # Compute first eigenvector
-        u1 = u_list[0]
+        u1 = u_list[0].reshape(-1,1)
         A = E.T.dot(E)
         b = 0.5*E.T.dot(u1)
         x = jnp.linalg.solve(A, b)
-        u1_approx = E.dot(x)
+        u1_approx = E.dot(x).reshape(-1,1)
         u1_approx = u1_approx / jnp.linalg.norm(u1_approx)
         rotated_eigvec.append(u1_approx)
 
         # Compute remaining eigenvectors
         for k in range(1, len(u_list)):
-            uk = u_list[k]
-            Uk = jnp.stack(rotated_eigvec, axis=1)
+            uk = u_list[k].reshape(-1,1)
+            Uk = jnp.concatenate(rotated_eigvec, axis=1)
             bk = 0.5*E.T.dot(uk)
             Bk = 0.5*E.T.dot(Uk)
             xk = jnp.linalg.solve(A, bk)
@@ -389,8 +389,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             Mk = Uk.T.dot(E)
             Ak = Mk.dot(Xk)
             bbk = Mk.dot(xk)
-            xx_k = jnp.linalg.solve(Ak, bbk)
-            uk_approx = E.dot(xx_k)
+            mu_leq_k = jnp.linalg.solve(Ak, bbk)
+            wk = xk - Xk.dot(mu_leq_k)
+            uk_approx = E.dot(wk).reshape(-1,1)
             uk_approx = uk_approx / jnp.linalg.norm(uk_approx)
             rotated_eigvec.append(uk_approx)
 
