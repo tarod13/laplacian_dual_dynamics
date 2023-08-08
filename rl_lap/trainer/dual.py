@@ -155,6 +155,23 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         else:
             updates = updates * coeff_vector.reshape(-1, 1)
 
+        if self.use_additive_duals and self.use_predecessor_decay:
+            # Obtain diagonal errors
+            diag_errors = jnp.diag(error_matrix)
+            predecessor_errors = jnp.zeros_like(diag_errors)
+            predecessor_errors = predecessor_errors.at[1:].set(diag_errors[:-1])
+            if self.use_predecessor_abs:
+                predecessor_errors = jnp.abs(predecessor_errors)
+            decays = jnp.exp(
+                -self.predecessor_decay_coefficient 
+                * predecessor_errors
+            )
+            if self.use_predecessor_clip:
+                decays = jnp.clip(decays, 0, 1)
+            ones_matrix = jnp.ones((self.d, self.d))
+            diag_matrix = jnp.diag(decays) + jnp.tril(ones_matrix, k=-1)
+            updates = updates * diag_matrix
+
         # Calculate updated duals depending on whether 
         # we optimize the log of the duals or not.
         if self.optimize_dual_logs:

@@ -197,6 +197,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.env = env
 
         # Log environment eigenvalues
+        self.env.round_eigenvalues(self.eigval_precision_order)
         eigenvalues = self.env.get_eigenvalues()[:self.d]
         eigval_dict = {
             f'eigval_{i}': eigenvalues[i] for i in range(len(eigenvalues))
@@ -312,6 +313,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms
         
+        # Select rotation function
+        if self.direct_rotation:
+            rotation_function = self.rotate_eigenvectors
+        else:
+            rotation_function = self.find_best_basis_for_eigenvectors
+
         # Compute cosine similarities for both directions
         unique_real_eigval = sorted(eigvec_dict.keys(), reverse=True)
         # print(f'Unique eigenvalues: {unique_real_eigval}')
@@ -334,12 +341,16 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 # Get eigenvectors associated with the current eigenvalue
                 current_real_eigvec = eigvec_dict[eigval]
                 current_approx_eigvec = approx_eigvec[:,id_:id_+multiplicity]
-                optimal_approx_eigvec = self.rotate_eigenvectors(   # TODO: implement this function
+                optimal_approx_eigvec = rotation_function(
                     current_real_eigvec, current_approx_eigvec)
+                norms = jnp.linalg.norm(optimal_approx_eigvec, axis=0, keepdims=True)
+                optimal_approx_eigvec = optimal_approx_eigvec / norms   # We normalize, since the cosine similarity is invariant to scaling
                 
                 # Compute cosine similarity
                 for j in range(multiplicity):
-                    pos_sim = (current_real_eigvec[j]).dot(optimal_approx_eigvec[j].reshape(-1))
+                    real = current_real_eigvec[j]
+                    approx = optimal_approx_eigvec[:,j]
+                    pos_sim = (real).dot(approx)
                     similarities.append(jnp.maximum(pos_sim, -pos_sim))
 
             id_ += multiplicity
@@ -353,11 +364,11 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         return cosine_similarity, similarities
     
-    def rotate_eigenvectors(
+    def find_best_basis_for_eigenvectors(
             self, 
             u_list: list, 
             E: jnp.ndarray
-        ) -> list:
+        ) -> jnp.ndarray:
         '''
             Rotate the eigenvectors in E to match the 
             eigenvectors in u_list as close as possible.
@@ -395,6 +406,48 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             uk_approx = uk_approx / jnp.linalg.norm(uk_approx)
             rotated_eigvec.append(uk_approx)
 
+        rotated_eigvec = jnp.concatenate(rotated_eigvec, axis=1)
+        return rotated_eigvec
+    
+    def rotate_eigenvectors(
+            self, 
+            u_list: list, 
+            E: jnp.ndarray
+        ) -> jnp.ndarray:
+        '''
+            Rotate the eigenvectors in E to match the 
+            eigenvectors in u_list as close as possible.
+            That is, we are finding the optimal basis of
+            the subspace spanned by the eigenvectors in E
+            such that the angle between the eigenvectors
+            in u_list and the rotated eigenvectors is
+            minimized.
+        '''
+        rotation_vectors = []
+
+        # Compute first eigenvector
+        u1 = u_list[0].reshape(-1,1)
+        w1_times_lambda_1 = 0.5*E.T.dot(u1)
+        w1 = w1_times_lambda_1 / jnp.linalg.norm(w1_times_lambda_1)
+        rotation_vectors.append(w1)
+
+        # Compute remaining eigenvectors
+        for k in range(1, len(u_list)):
+            uk = u_list[k].reshape(-1,1)
+            Wk = jnp.concatenate(rotation_vectors, axis=1)
+            improper_wk = E.T.dot(uk)
+            bk = Wk.T.dot(improper_wk)
+            Ak = Wk.T.dot(Wk)
+            mu_k = jnp.linalg.solve(Ak, bk)
+            wk_times_lambda_k = 0.5*(improper_wk - Wk.dot(mu_k))
+            wk = wk_times_lambda_k / jnp.linalg.norm(wk_times_lambda_k)
+            rotation_vectors.append(wk)
+
+        # Use rotation vectors as columns of the optimal rotation matrix
+        R = jnp.concatenate(rotation_vectors, axis=1)
+
+        # Obtain list of rotated eigenvectors
+        rotated_eigvec = E.dot(R)
         return rotated_eigvec
 
     @abstractmethod

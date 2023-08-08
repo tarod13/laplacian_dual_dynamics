@@ -1,6 +1,10 @@
 from typing import Optional, List
 from itertools import product
 import numpy as np
+from mpmath import mp
+import sys
+
+np.set_printoptions(threshold=sys.maxsize)
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -289,8 +293,11 @@ class GridEnv(gym.Env):
         return M
 
     def _compute_eigenvectors(self) -> List[np.ndarray]:
+        # if np.allclose(self._dyn_mat, self._dyn_mat.T):
+        #     eig_function = 
+
         # Calculate eigenvectors
-        eigvals, eigvecs = np.linalg.eig(self._dyn_mat)
+        eigvals, eigvecs = np.linalg.eig(self._dyn_mat)   # eigh since we assume the dynamics matrix is symmetric
         eigvals = eigvals.real
         eigvecs = eigvecs.real
 
@@ -307,9 +314,25 @@ class GridEnv(gym.Env):
         # Choose directions of eigenvectors
         eigvecs = np.sign(eigvecs[0,:].reshape(1,-1)) * eigvecs
 
-        # Round eigenvalues to 5 decimals to avoid numerical
-        # errors and consider multiplicities larger than 1
-        eigvals = np.round(eigvals, 5)
+        # Check if symmetric
+        if np.allclose(self._dyn_mat, self._dyn_mat.T):
+            print('Dynamics matrix is symmetric.')
+        else:
+            print('Dynamics matrix is not symmetric.')
+
+        eigvals_sym, eigvecs_sym = np.linalg.eigh(self._dyn_mat)
+        
+        A = mp.matrix(self._dyn_mat.tolist())
+        E, ER = mp.eig(A)
+
+        E_sym, ER_sym = mp.eigsy(A)
+
+        print(f'Eigenvalues calculated with numpy: {eigvals}')
+        print(f'Eigenvalues calculated with mpmath: {E}')
+        print(f'Eigenvalues calculated with numpy (symmetric): {eigvals_sym}')
+        print(f'Eigenvalues calculated with mpmath (symmetric): {E_sym}')
+
+        x = 1
 
         return eigvals, eigvecs
     
@@ -321,4 +344,7 @@ class GridEnv(gym.Env):
     
     def get_eigenvalues(self):
         return self._eigval
+    
+    def round_eigenvalues(self, decimals=5):
+        self._eigval = np.round(self._eigval, decimals=decimals)
     

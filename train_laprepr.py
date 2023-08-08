@@ -65,7 +65,6 @@ def main(hyperparams):
     nn_library = hparam_yaml['nn_library']
     rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
     hidden_dims = hparam_yaml['hidden_dims']
-    dual_initial_val = hparam_yaml['dual_initial_val']
 
     if (nn_library != 'haiku-v2') and (algorithm == 'dual-rs'):
         raise ValueError(f'Algorithm {algorithm} is not supported with neural network library {nn_library} yet.')
@@ -76,6 +75,7 @@ def main(hyperparams):
     
     if algorithm in ['dual', 'dual-rs']:
         # Initialize dual parameters as lower triangular matrix with ones
+        dual_initial_val = hparam_yaml['dual_initial_val']
         dual_params = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
 
         # Initialize state dict with error and accumulated error matrices
