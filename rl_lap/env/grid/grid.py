@@ -1,10 +1,19 @@
-from typing import Optional, List
-from itertools import product
-import numpy as np
-from mpmath import mp
+import os
 import sys
+from itertools import product
+from typing import Optional, List, Tuple
 
+import numpy as np
 np.set_printoptions(threshold=sys.maxsize)
+from mpmath import mp
+mp.prec = 128
+try:
+    from flint import acb_mat, ctx
+    ctx.prec = 128
+    FLINT_INSTALLED = True
+except ImportError:
+    print("Warning: flint not installed. Using mpmath instead.")
+    FLINT_INSTALLED = False
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -23,7 +32,8 @@ class GridEnv(gym.Env):
             self, 
             path, 
             render_mode=None, 
-            use_target: bool = True
+            use_target: bool = True,
+            eig: Optional[Tuple] = None,
         ):
         self.grid = txt_to_grid(path)
         self.size = self.grid.shape[0]
@@ -66,13 +76,21 @@ class GridEnv(gym.Env):
         self.window = None
         self.clock = None
 
+        # Create a state index dictionary
         self._states = np.argwhere(self.grid) #.astype(np.float32)
         self.n_states = self._states.shape[0]
         self._state_indices = {}
         for i, pos in enumerate(self._states):
             self._state_indices[tuple(pos)] = i
+
+        # Compute the dynamics matrix
         self._dyn_mat = self._maze_to_uniform_policy_dynamics()
-        self._eigval, self._eigvec = self._compute_eigenvectors()
+
+        # Compute the eigenvectors and eigenvalues of the dynamics matrix
+        if eig is None:
+            self._eigval, self._eigvec = self._compute_eigenvectors()
+        else:
+            self._eigval, self._eigvec = eig
 
     def _get_obs(self):
         # Get the agent's location after applying the transformations
@@ -296,15 +314,22 @@ class GridEnv(gym.Env):
         # if np.allclose(self._dyn_mat, self._dyn_mat.T):
         #     eig_function = 
 
+        mp_mat = mp.matrix(self._dyn_mat.tolist())
         # Calculate eigenvectors
-        eigvals, eigvecs = np.linalg.eig(self._dyn_mat)   # eigh since we assume the dynamics matrix is symmetric
-        eigvals = eigvals.real
-        eigvecs = eigvecs.real
+        if FLINT_INSTALLED:
+            flint_mat = acb_mat(mp_mat)
+            eigvals, eigvecs = flint_mat.eig(right=True, algorithm="approx")
+            eigvals = np.array(eigvals).astype(np.clongdouble).real.flatten()   # real since we assume the dynamics matrix is symmetric
+            eigvecs = np.array(eigvecs.tolist()).astype(np.clongdouble).real
+        else:
+            eigvals, eigvecs = mp.eigsy(mp_mat)   # eigsy since we assume the dynamics matrix is symmetric
+            eigvals = np.array(eigvals.tolist()).astype(np.longdouble).flatten()  
+            eigvecs = np.array(eigvecs.tolist()).astype(np.longdouble)
 
         # Sort eigenvectors from largest to smallest eigenvalue, 
         # given that we are using the dynamics matrix instead of 
         # the successor representation matrix
-        idx = np.flip(eigvals.argsort())
+        idx = np.flip((eigvals**2).argsort())
         eigvals = eigvals[idx]
         eigvecs = eigvecs[:,idx]
 
@@ -320,20 +345,6 @@ class GridEnv(gym.Env):
         else:
             print('Dynamics matrix is not symmetric.')
 
-        eigvals_sym, eigvecs_sym = np.linalg.eigh(self._dyn_mat)
-        
-        A = mp.matrix(self._dyn_mat.tolist())
-        E, ER = mp.eig(A)
-
-        E_sym, ER_sym = mp.eigsy(A)
-
-        print(f'Eigenvalues calculated with numpy: {eigvals}')
-        print(f'Eigenvalues calculated with mpmath: {E}')
-        print(f'Eigenvalues calculated with numpy (symmetric): {eigvals_sym}')
-        print(f'Eigenvalues calculated with mpmath (symmetric): {E_sym}')
-
-        x = 1
-
         return eigvals, eigvecs
     
     def get_states(self):
@@ -347,4 +358,12 @@ class GridEnv(gym.Env):
     
     def round_eigenvalues(self, decimals=5):
         self._eigval = np.round(self._eigval, decimals=decimals)
+
+    def save_eigenpairs(self, filename):
+        # Create directory if it does not exist
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        # Save eigenvalues and eigenvectors
+        with open(filename, 'wb') as f:
+            np.savez_compressed(f, eigval=self._eigval, eigvec=self._eigvec)
     

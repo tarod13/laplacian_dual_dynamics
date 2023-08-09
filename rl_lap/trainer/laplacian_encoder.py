@@ -175,6 +175,18 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.log_counter = (self.log_counter + 1) % self.print_freq
         
     def build_environment(self):
+        # Load eigenvectors and eigenvalues of the transition dynamics matrix (if they exist)
+        path_eig = f'./rl_lap/env/grid/eigval/{self.env_name}.npz'
+        if not os.path.exists(path_eig):
+            eig = None
+            eig_not_found = True
+        else:
+            with open(path_eig, 'rb') as f:
+                eig = np.load(f)
+                eigval, eigvec = eig['eigval'], eig['eigvec']
+                eig = (eigval, eigvec)
+            eig_not_found = False
+
         # Create environment
         path_txt_grid = f'./rl_lap/env/grid/txts/{self.env_name}.txt'
         env = gym.make(
@@ -182,6 +194,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             path=path_txt_grid, 
             render_mode="rgb_array", 
             use_target=False, 
+            eig=eig,
         )
         # Wrap environment with observation normalization
         obs_wrapper = lambda e: NormObs(e)
@@ -196,14 +209,21 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Set environment as attribute
         self.env = env
 
+        # Save eigenvectors and eigenvalues
+        if eig_not_found and self.save_eig:
+            self.env.save_eigenpairs(path_eig)
+
         # Log environment eigenvalues
         self.env.round_eigenvalues(self.eigval_precision_order)
-        eigenvalues = self.env.get_eigenvalues()[:self.d]
-        eigval_dict = {
-            f'eigval_{i}': eigenvalues[i] for i in range(len(eigenvalues))
-        }
-        self.logger.log(eigval_dict)
+        eigenvalues = self.env.get_eigenvalues()
         print(f'Environment eigenvalues: {eigenvalues}')
+        print(f'First {self.d} eigenvalues: {eigenvalues[:self.d]}')
+
+        if self.use_wandb:
+            eigval_dict = {
+                f'eigval_{i}': eigenvalues[i] for i in range(len(eigenvalues[:self.d]))
+            }
+            self.logger.log(eigval_dict)
 
     def collect_experience(self) -> None:
         # Create agent

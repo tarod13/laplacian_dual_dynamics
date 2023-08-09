@@ -1,19 +1,14 @@
 import os
 import yaml
 from argparse import ArgumentParser
-import importlib
 import random
 import numpy as np
 
 import jax
 import jax.numpy as jnp
-import haiku as hk
 import optax
 
-from rl_lap.agent import laprepr_jax   # TODO: Check if this is needed
-from rl_lap.tools import flag_tools
 from rl_lap.tools import timer_tools
-from rl_lap.tools import logging_tools
 
 from rl_lap.trainer import (
     CALaplacianEncoderTrainerM,
@@ -23,24 +18,13 @@ from rl_lap.trainer import (
 from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
 from rl_lap.nets import (
-    MLP, generate_hk_module_fn, generate_hk_get_variables_fn,
+    MLP, generate_hk_module_fn,
 )
 import wandb
 
 os.environ['WANDB_API_KEY']='83c25550226f8a86fdd4874026d2c0804cd3dc05'
 os.environ['WANDB_ENTITY']='tarod13'
 
-def _build_model_haiku(d):   # TODO: Choose a better location for this function
-    def lap_net(obs):
-        network = hk.Sequential([
-            hk.Linear(256),   # TODO: Add hyperparameters to config file
-            jax.nn.relu,
-            hk.Linear(256),
-            jax.nn.relu,
-            hk.Linear(d),
-        ])
-        return network(obs.astype(np.float32))
-    return hk.without_apply_rng(hk.transform(lap_net))
 
 def main(hyperparams):
     # Load YAML hyperparameters

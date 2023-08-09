@@ -137,3 +137,4 @@ log/*
 rl_lap/data/*
 wandb
 results
+rl_lap/env/grid/eigval
