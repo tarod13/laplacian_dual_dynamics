@@ -20,7 +20,7 @@ print_freq: 1000
 save_freq: 10000
 max_episode_steps: 50
 seed: 1234
-env_name: GridRoomSym-4
+env_name: GridRoom-1
 env_family: Grid-v0
 nn_library: haiku-v2
 lr: 0.0001

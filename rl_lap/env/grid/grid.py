@@ -329,7 +329,7 @@ class GridEnv(gym.Env):
         # Sort eigenvectors from largest to smallest eigenvalue, 
         # given that we are using the dynamics matrix instead of 
         # the successor representation matrix
-        idx = np.flip((eigvals**2).argsort())
+        idx = np.flip((eigvals).argsort())   # TODO: consider negative eigenvalues
         eigvals = eigvals[idx]
         eigvecs = eigvecs[:,idx]
 

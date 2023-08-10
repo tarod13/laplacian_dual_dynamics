@@ -24,7 +24,7 @@ import wandb
 
 os.environ['WANDB_API_KEY']='83c25550226f8a86fdd4874026d2c0804cd3dc05'
 os.environ['WANDB_ENTITY']='tarod13'
-
+# os.environ['WANDB_MODE']='offline'
 
 def main(hyperparams):
     # Load YAML hyperparameters
