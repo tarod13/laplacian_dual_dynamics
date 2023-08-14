@@ -14,6 +14,7 @@ from rl_lap.trainer import (
     CALaplacianEncoderTrainerM,
     DRSSLaplacianEncoderTrainer,
     DualLaplacianEncoderTrainer,
+    ExactDualLaplacianEncoderTrainer,
 )   # TODO: Add this class to rl_lap\trainer\__init__.py
 from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
@@ -54,17 +55,21 @@ def main(hyperparams):
         raise ValueError(f'Algorithm {algorithm} is not supported with neural network library {nn_library} yet.')
 
     encoder_fn = generate_hk_module_fn(MLP, d, hidden_dims, hparam_yaml['activation'])
-    dual_params = None
+    dual_params = {}
     training_state = {}
     
-    if algorithm in ['dual', 'dual-rs']:
+    if algorithm in ['dual', 'dual-rs', 'dual-exact']:
         # Initialize dual parameters as lower triangular matrix with ones
         dual_initial_val = hparam_yaml['dual_initial_val']
-        dual_params = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
+        dual_params['duals'] = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
 
         # Initialize state dict with error and accumulated error matrices
-        training_state['error'] = jnp.zeros((d, d))
-        training_state['acc_error'] = jnp.zeros((d, d))
+        training_state['errors'] = jnp.zeros((d, d))
+        
+        if algorithm in ['dual-exact']:
+            barrier_initial_val = hparam_yaml['barrier_initial_val']
+            dual_params['barrier_coefs'] = jnp.tril(barrier_initial_val * jnp.ones((d, d)), k=0)
+            training_state['squared_errors'] = jnp.zeros((d, d))
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
@@ -85,6 +90,10 @@ def main(hyperparams):
         Trainer = DRSSLaplacianEncoderTrainer
     elif algorithm == 'dual':
         Trainer = DualLaplacianEncoderTrainer
+    elif algorithm == 'dual-exact':
+        Trainer = ExactDualLaplacianEncoderTrainer
+    else:
+        raise ValueError(f'Algorithm {algorithm} is not supported.')
 
     trainer = Trainer(
         encoder_fn=encoder_fn,
@@ -108,7 +117,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default= 'coefficient_augmented_martin.yaml', #'dual.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
+        default= 'dual_exact.yaml', #'dual.yaml', #'dual_exact.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
         help='Configuration file to use.'
     )
     parser.add_argument(

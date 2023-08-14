@@ -75,7 +75,7 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         return orthogonality_loss, error_matrix, dual_dict
     
     def update_error_estimates(self, params, errors):   # TODO: Handle better the fact that params are an array
-        old = params['error']
+        old = params['errors']
         update = old + self.error_estimate_update_rate * (errors - old)   # The first update might be too large
         error_dict = {
             f'error({i},{j})': update[i,j]
@@ -115,6 +115,7 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
             'train_loss': lagrangian,
             'graph_loss': graph_loss,
             'reg_loss': orthogonality_loss,
+            'barrier_loss': 0.0,
         }
         metrics_dict.update(inner_dict)
         metrics_dict.update(dual_dict)
@@ -129,7 +130,7 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
             Update dual variables using some approximation 
             of the gradient of the lagrangian.
         '''
-        error_matrix = params['error']
+        error_matrix = params['errors']
         dual_variables = params['duals']
         updates = jnp.tril(error_matrix)
 
@@ -215,5 +216,10 @@ class DualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
     def update_training_state(self, params, error_update):
         '''Update error estimates'''
 
-        params['error'] = error_update
+        params['errors'] = error_update
+        return params
+    
+    def update_barrier_coefficients(self, params, *args, **kwargs):
+        '''Leave params unchanged'''
+
         return params

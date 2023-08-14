@@ -66,6 +66,7 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
             'train_loss': loss,
             'graph_loss': graph_loss,
             'reg_loss': orthogonality_loss,
+            'barrier_loss': 0.0,
         }
         metrics = (loss, graph_loss, regularization_loss, metrics_dict)
         aux = (metrics, None)
@@ -78,6 +79,11 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
         return params
     
     def update_training_state(self, params, *args, **kwargs):
+        '''Leave params unchanged'''
+
+        return params
+    
+    def update_barrier_coefficients(self, params, *args, **kwargs):
         '''Leave params unchanged'''
 
         return params

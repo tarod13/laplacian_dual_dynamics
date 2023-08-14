@@ -96,9 +96,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         encoder_params = self.encoder_fn.init(next(rng), sample_input.s1)
         params = {
             'encoder': encoder_params,
-            'duals': self.dual_params,
         }
-        # Add state info to the params dictionary
+        # Add duals and state info to the params dictionary
+        params.update(self.dual_params)
         params.update(self.training_state)
         
         # Initialize the optimizer
@@ -127,6 +127,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             )
             if is_dual_reset_step:
                 params = self.reset_duals(params)
+
+            is_barrier_update_step = (
+                ((step + 1) % self.update_barrier_every) == 0
+            )
+            if is_barrier_update_step:
+                params = self.update_barrier_coefficients(params)
 
             # Save and print info
             is_log_step = ((step + 1) % self.print_freq) == 0
@@ -184,6 +190,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             with open(path_eig, 'rb') as f:
                 eig = np.load(f)
                 eigval, eigvec = eig['eigval'], eig['eigvec']
+
+                # Sort eigenvalues and eigenvectors
+                idx = np.flip((eigval).argsort())   # TODO: consider negative eigenvalues
+                eigval = eigval[idx]
+                eigvec = eigvec[:,idx]
+
                 eig = (eigval, eigvec)
             eig_not_found = False
 
@@ -480,4 +492,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     
     @abstractmethod
     def update_training_state(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def update_barrier_coefficients(self, *args, **kwargs):
         raise NotImplementedError
