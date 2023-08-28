@@ -57,6 +57,16 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         error_matrix = error_matrix_dict['errors']
         squared_error_matrix = error_matrix_dict['squared_errors']
 
+        if self.use_additive_duals:
+            # Obtain diagonal of dual variables
+            duals_diag = jnp.diag(dual_variables)
+
+            # Obtain cumulative sum of diagonal
+            duals_diag_cumsum = jnp.cumsum(duals_diag, axis=0)
+
+            # Obtain the dual variables
+            dual_variables = jnp.tril(dual_variables, k=-1) + jnp.diag(duals_diag_cumsum)   # This is only valid if they decrease monotonically
+
         if self.use_error_mean:
             coeff_vector = jnp.arange(self.d, 0, -1)
         else:
@@ -135,6 +145,19 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
 
         return loss, aux
     
+    def calculate_additive_duals(self, dual_variables):
+        '''Calculate the dual variables using the additive method'''
+        duals_diag = jnp.diag(dual_variables)
+        duals_diag_cumsum = jnp.cumsum(duals_diag, axis=0)
+        additive_dual_variables = jnp.tril(dual_variables, k=-1) + jnp.diag(duals_diag_cumsum)   # This is only valid if they decrease monotonically
+        return additive_dual_variables
+
+    def clip_duals(self, dual_variables):
+        duals_diag = jnp.diag(dual_variables)
+        striclty_non_positive_duals_diag = jnp.where(duals_diag > 0, 0, duals_diag)
+        clipped_dual_variables = jnp.tril(dual_variables, k=-1) + jnp.diag(striclty_non_positive_duals_diag)
+        return clipped_dual_variables
+    
     def update_duals(self, params):
         '''
             Update dual variables using some approximation 
@@ -153,6 +176,10 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
             a_min=self.min_duals,
             a_max=self.max_duals,
         )   # TODO: Cliping is probably not the best way to handle this
+
+        # Clip diagonals to be negative
+        if self.use_additive_duals:
+            updated_duals = self.clip_duals(updated_duals)
 
         # Update params, making sure that the duals are lower triangular
         params['duals'] = jnp.tril(updated_duals)

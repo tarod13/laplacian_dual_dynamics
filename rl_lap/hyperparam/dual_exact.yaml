@@ -20,7 +20,7 @@ print_freq: 1000
 save_freq: 10000
 max_episode_steps: 50
 seed: 1234
-env_name: GridRoom-4
+env_name: GridRoomSym-4
 env_family: Grid-v0
 nn_library: haiku-v2
 lr: 0.0001
@@ -40,10 +40,10 @@ save_eig: True
 algorithm: dual-exact
 dual_initial_val: 0.0
 detach_symmetric_constraints: True
-orthogonality_tolerance: 0.001
+orthogonality_tolerance: 0.0
 optimize_dual_logs: False
 use_lower_triangular: False   # Add the option to use lower triangular matrix
-error_estimate_update_rate: 1.0
+error_estimate_update_rate: 0.1
 lr_duals: 0.01
 min_duals: -100
 max_duals: 100
@@ -56,7 +56,7 @@ dual_threshold: 1.0
 barrier_threshold: 0.001
 barrier_increase_factor: 1.1
 barrier_initial_val: 0.0
-lr_barrier_coefs: 0.01
+lr_barrier_coefs: 0.001
 min_barrier_coefs: -100
 max_barrier_coefs: 100
 use_barrier_update_v2: True
