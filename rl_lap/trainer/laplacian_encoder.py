@@ -308,6 +308,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Get baseline parameters
         states = self.env.get_states()
         real_eigvec = self.env.get_eigenvectors()[:,:self.d]
+        real_eigvec = jnp.array(real_eigvec)
         real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
         real_eigvec = real_eigvec / real_norms
 
@@ -330,6 +331,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         states = self.env.get_states()
         real_eigval = self.env.get_eigenvalues()[:self.d]
         real_eigvec = self.env.get_eigenvectors()[:,:self.d]
+        real_eigvec = jnp.array(real_eigvec)
         real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
         real_eigvec = real_eigvec / real_norms
 

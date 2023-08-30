@@ -320,11 +320,11 @@ class GridEnv(gym.Env):
             flint_mat = acb_mat(mp_mat)
             eigvals, eigvecs = flint_mat.eig(right=True, algorithm="approx")
             eigvals = np.array(eigvals).astype(np.clongdouble).real.flatten()   # real since we assume the dynamics matrix is symmetric
-            eigvecs = np.array(eigvecs.tolist()).astype(np.clongdouble).real
+            eigvecs = np.array(eigvecs.tolist()).astype(np.float32).real
         else:
             eigvals, eigvecs = mp.eigsy(mp_mat)   # eigsy since we assume the dynamics matrix is symmetric
             eigvals = np.array(eigvals.tolist()).astype(np.longdouble).flatten()  
-            eigvecs = np.array(eigvecs.tolist()).astype(np.longdouble)
+            eigvecs = np.array(eigvecs.tolist()).astype(np.float32)
 
         # Sort eigenvectors from largest to smallest eigenvalue, 
         # given that we are using the dynamics matrix instead of 
@@ -357,7 +357,7 @@ class GridEnv(gym.Env):
         return self._eigval
     
     def round_eigenvalues(self, decimals=5):
-        self._eigval = np.round(self._eigval, decimals=decimals)
+        self._eigval = np.round(self._eigval, decimals=decimals).astype(np.float32)
 
     def save_eigenpairs(self, filename):
         # Create directory if it does not exist
