@@ -90,7 +90,8 @@ class GridEnv(gym.Env):
         if eig is None:
             self._eigval, self._eigvec = self._compute_eigenvectors()
         else:
-            self._eigval, self._eigvec = eig
+            self._eigval, _eigvec = eig
+            self._eigvec = _eigvec.astype(np.float32)
 
     def _get_obs(self):
         # Get the agent's location after applying the transformations
