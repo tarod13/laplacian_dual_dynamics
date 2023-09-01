@@ -321,7 +321,7 @@ class GridEnv(gym.Env):
             flint_mat = acb_mat(mp_mat)
             eigvals, eigvecs = flint_mat.eig(right=True, algorithm="approx")
             eigvals = np.array(eigvals).astype(np.clongdouble).real.flatten()   # real since we assume the dynamics matrix is symmetric
-            eigvecs = np.array(eigvecs.tolist()).astype(np.float32).real
+            eigvecs = np.array(eigvecs.tolist()).astype(np.clongdouble).real.astype(np.float32)
         else:
             eigvals, eigvecs = mp.eigsy(mp_mat)   # eigsy since we assume the dynamics matrix is symmetric
             eigvals = np.array(eigvals.tolist()).astype(np.longdouble).flatten()  
