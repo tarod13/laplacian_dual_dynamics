@@ -6,10 +6,10 @@ from typing import Optional, List, Tuple
 import numpy as np
 np.set_printoptions(threshold=sys.maxsize)
 from mpmath import mp
-mp.prec = 128
+mp.prec = 256
 try:
     from flint import acb_mat, ctx
-    ctx.prec = 128
+    ctx.prec = 256
     FLINT_INSTALLED = True
 except ImportError:
     print("Warning: flint not installed. Using mpmath instead.")
