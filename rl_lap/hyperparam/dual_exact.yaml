@@ -37,6 +37,8 @@ use_cosine_similarity_v2: True
 eigval_precision_order: 16
 direct_rotation: True
 save_eig: True
+save_model: False
+save_model_every: 100000
 algorithm: dual-exact
 dual_initial_val: 0.0
 detach_symmetric_constraints: True
@@ -55,7 +57,7 @@ reset_proportion: 0.5
 dual_threshold: 1.0
 barrier_threshold: 0.001
 barrier_increase_factor: 1.1
-barrier_initial_val: 0.0
+barrier_initial_val: 1.0
 lr_barrier_coefs: 0.001
 min_barrier_coefs: -100
 max_barrier_coefs: 100

@@ -37,6 +37,8 @@ use_cosine_similarity_v2: True
 eigval_precision_order: 16
 direct_rotation: True
 save_eig: True
+save_model: False
+save_model_every: 100000
 algorithm: coef-a
 regularization_weight: 5.0
 use_norm_normalization: True
