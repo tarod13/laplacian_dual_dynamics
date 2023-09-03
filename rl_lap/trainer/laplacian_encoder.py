@@ -1,37 +1,29 @@
 import os
-import logging
 from typing import Tuple
 from abc import ABC, abstractmethod
-from itertools import product
 from collections import OrderedDict, namedtuple
-#from tqdm import tqdm
-
-#import torch
-#from torch.optim import Optimizer
+from datetime import datetime
 
 from rl_lap.trainer.trainer import Trainer
 
-# Libraries to generate episodes
-import random
 import gymnasium as gym
 from gymnasium.wrappers import TimeLimit
+import wandb
 
 import rl_lap.env
 from rl_lap.env.wrapper.norm_obs import NormObs
 from rl_lap.agent.agent import BehaviorAgent as Agent
 from rl_lap.policy import DiscreteUniformRandomPolicy as Policy
 
-# Martin libraries
 from ..tools import timer_tools
 from ..tools import summary_tools
+from ..tools import saving
 import jax
 import haiku as hk
 import jax.numpy as jnp
 import numpy as np
 import optax
 
-# Equinox version libraries
-import equinox as eqx
 
 Data = namedtuple("Data", "s1 s2 s_neg_1 s_neg_2")   # TODO: Change notation
 
@@ -46,6 +38,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.compute_cosine_similarity = jax.jit(self.compute_cosine_similarity)
         self.train_info = OrderedDict()
         self._global_step = 0
+        self._best_cosine_similarity = -1
+        self._date_time = datetime.now().strftime("%Y%m%d%H%M%S")
 
     def _get_obs_batch(self, steps):   # TODO: Check this function (way to build the batch)
         obs_batch = [s.step.agent_state["agent"].astype(np.float32)
@@ -160,12 +154,66 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
                 steps_per_sec = timer.steps_per_sec(step)
                 print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
+
                 self._print_train_info()
                 if self.use_wandb:   # TODO: Use an alternative to wandb if False
+                    # Log metrics
                     self.logger.log(metrics_dict)
+
+                self._save_model(params, opt_state, cosine_similarity)
                     
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
+
+    def _save_model(self, params, optim_state, cosine_similarity):
+        # Save the model if the cosine similarity is better than the previous best
+        if cosine_similarity > self._best_cosine_similarity:
+            save_path_best = f'./results/models/{self.env_name}/best_{self._date_time}.pkl'
+
+            self._best_cosine_similarity = cosine_similarity
+            saving.save_model(
+                params=params,
+                optim_state=optim_state,
+                path=save_path_best,
+                overwrite=True,
+            )
+
+            # Log parameters
+            if self.use_wandb:                    
+                best_model = wandb.Artifact(
+                    name='best_model', 
+                    type='model',
+                    description='Best model found during training.',
+                )
+
+                # Add model parameters to the artifact
+                best_model.add_file(save_path_best)
+
+                # Save the artifact
+                self.logger.log_artifact(best_model)
+            
+        # Save the model every log step
+        save_path_last = f'./results/models/{self.env_name}/last_{self._date_time}.pkl'        
+        saving.save_model(
+            params=params,
+            optim_state=optim_state,
+            path=save_path_last,
+            overwrite=True,
+        )
+
+        # Log parameters
+        if self.use_wandb:
+            last_model = wandb.Artifact(
+                name='last_model', 
+                type='model',
+                description='Most recent model.',
+            )
+
+            # Add model parameters to the artifact
+            last_model.add_file(save_path_last)
+
+            # Save the artifact
+            self.logger.log_artifact(last_model)
 
     def _print_train_info(self):   # TODO: Replace this function
         summary_str = summary_tools.get_summary_str(
