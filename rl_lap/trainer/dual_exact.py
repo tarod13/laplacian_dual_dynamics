@@ -94,7 +94,8 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         updates = {}
         for error_type in ['errors', 'squared_errors']:
             old = params[error_type]
-            update = old + self.error_estimate_update_rate * (errors[error_type] - old)   # The first update might be too large
+            update_rate = self.error_estimate_update_rate if error_type == 'errors' else self.sq_error_estimate_update_rate
+            update = old + update_rate * (errors[error_type] - old)   # The first update might be too large
             updates[error_type] = update
             if error_type == 'errors':
                 error_dict = {
@@ -157,6 +158,30 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         striclty_non_positive_duals_diag = jnp.where(duals_diag > 0, 0, duals_diag)
         clipped_dual_variables = jnp.tril(dual_variables, k=-1) + jnp.diag(striclty_non_positive_duals_diag)
         return clipped_dual_variables
+    
+    def additional_update_step(self, step, params, *args, **kwargs):
+        # Update the dual parameters
+        is_dual_update_step = (
+            (((step + 1) % self.update_dual_every) == 0)
+            and (step > self.update_dual_after)
+        )
+        if is_dual_update_step:
+            params = self.update_duals(params)
+
+        is_dual_reset_step = (
+            (((step + 1) % self.reset_dual_every) == 0)
+            and (step > self.update_dual_after)
+        )
+        if is_dual_reset_step:
+            params = self.reset_duals(params)
+
+        is_barrier_update_step = (
+            ((step + 1) % self.update_barrier_every) == 0
+        )
+        if is_barrier_update_step:
+            params = self.update_barrier_coefficients(params)
+        
+        return params
     
     def update_duals(self, params):
         '''

@@ -6,8 +6,7 @@ from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
 class Trainer(ABC):
     def __init__(self, 
             encoder_fn: callable,
-            dual_params: jax.Array,
-            training_state: dict, 
+            additional_params: dict, 
             optimizer: callable, 
             replay_buffer: EpisodicReplayBuffer, 
             logger, 
@@ -18,8 +17,7 @@ class Trainer(ABC):
 
         # Store model
         self.encoder_fn = encoder_fn
-        self.dual_params = dual_params
-        self.training_state = training_state
+        self.additional_params = additional_params
         self.optimizer = optimizer
         self.replay_buffer = replay_buffer
         self.logger = logger
@@ -42,4 +40,8 @@ class Trainer(ABC):
 
     @abstractmethod
     def train(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def additional_update_step(self, *args, **kwargs):
         raise NotImplementedError

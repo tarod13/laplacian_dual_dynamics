@@ -92,7 +92,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             'encoder': encoder_params,
         }
         # Add duals and state info to the params dictionary
-        params.update(self.additional_params)
+        params.update(self.dual_params)
+        params.update(self.training_state)
         
         # Initialize the optimizer
         opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?
@@ -106,7 +107,26 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             
             self._global_step += 1   # TODO: Replace with self.step_counter
 
-            params = self.additional_update_step(step, params)
+            # Update the dual parameters
+            is_dual_update_step = (
+                (((step + 1) % self.update_dual_every) == 0)
+                and (step > self.update_dual_after)
+            )
+            if is_dual_update_step:
+                params = self.update_duals(params)
+
+            is_dual_reset_step = (
+                (((step + 1) % self.reset_dual_every) == 0)
+                and (step > self.update_dual_after)
+            )
+            if is_dual_reset_step:
+                params = self.reset_duals(params)
+
+            is_barrier_update_step = (
+                ((step + 1) % self.update_barrier_every) == 0
+            )
+            if is_barrier_update_step:
+                params = self.update_barrier_coefficients(params)
 
             # Save and print info
             is_log_step = ((step + 1) % self.print_freq) == 0
@@ -519,9 +539,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         raise NotImplementedError
     
     @abstractmethod
+    def update_duals(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    @abstractmethod
     def update_training_state(self, *args, **kwargs):
         raise NotImplementedError
     
     @abstractmethod
-    def additional_update_step(self, *args, **kwargs):
-        raise NotImplementedError    
+    def update_barrier_coefficients(self, *args, **kwargs):
+        raise NotImplementedError

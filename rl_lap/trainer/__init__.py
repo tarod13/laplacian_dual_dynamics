@@ -4,3 +4,4 @@ from rl_lap.trainer.coefficient_augmented_martin import CoefficientAugmentedLapl
 from rl_lap.trainer.dual_relaxed_squared_scalar import DualRelaxedSquaredScalarLaplacianEncoderTrainer as DRSSLaplacianEncoderTrainer
 from rl_lap.trainer.dual import DualLaplacianEncoderTrainer
 from rl_lap.trainer.dual_exact import ExactDualLaplacianEncoderTrainer
+from rl_lap.trainer.dual_scalar_barrier import ScalarBarrierDualLaplacianEncoderTrainer

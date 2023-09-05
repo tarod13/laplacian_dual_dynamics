@@ -73,17 +73,12 @@ class CoefficientAugmentedLaplacianEncoderTrainerM(LaplacianEncoderTrainer):
 
         return loss, aux
     
-    def update_duals(self, params, *args, **kwargs):
-        '''Leave params unchanged'''
-
-        return params
-    
     def update_training_state(self, params, *args, **kwargs):
         '''Leave params unchanged'''
 
         return params
     
-    def update_barrier_coefficients(self, params, *args, **kwargs):
+    def additional_update_step(self, step, params, *args, **kwargs):
         '''Leave params unchanged'''
 
         return params
