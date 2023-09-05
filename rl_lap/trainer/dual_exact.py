@@ -263,7 +263,7 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         '''
         barrier_coefficients = params['barrier_coefs']
         squared_error_matrix = params['squared_errors']
-        updates = jnp.tril(squared_error_matrix - self.orthogonality_tolerance)
+        updates = jnp.tril(squared_error_matrix - self.orthogonality_tolerance).clip(min=0)
 
         # Calculate updated coefficients
         updated_barrier_coefficients = barrier_coefficients + self.lr_barrier_coefs * updates
