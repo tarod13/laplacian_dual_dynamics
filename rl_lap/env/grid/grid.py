@@ -36,17 +36,17 @@ class GridEnv(gym.Env):
             eig: Optional[Tuple] = None,
         ):
         self.grid = txt_to_grid(path)
-        self.size = self.grid.shape[0]
+        self.height = self.grid.shape[0]
+        self.width = self.grid.shape[1]
         self.window_size = 512   # Size of the PyGame window
         self.use_target = use_target
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(   # TODO: use MultiDiscrete instead of Box
-            {"agent": spaces.Box(0, self.size - 1, shape=(2,), dtype=int),})
+            {"agent": spaces.MultiDiscrete([self.height, self.width]),})
         if self.use_target:
-            self.observation_space["target"] = spaces.Box(
-                0, self.size - 1, shape=(2,), dtype=int)
+            self.observation_space["target"] = spaces.MultiDiscrete([self.height, self.width])
 
         # We have 4 actions, corresponding to "right", "up", "left", "down"
         self.action_space = spaces.Discrete(4)
@@ -54,7 +54,7 @@ class GridEnv(gym.Env):
         """
         The following dictionary maps abstract actions from `self.action_space` to 
         the direction we will walk in if that action is taken.
-        I.e. 0 corresponds to "right", 1 to "up" etc.
+        I.e. 0 corresponds to "right", 1 to "up" etc.   # TODO: Check if this is correct
         """
         self._action_to_direction = {
             0: np.array([1, 0]),
@@ -121,19 +121,15 @@ class GridEnv(gym.Env):
         super().reset(seed=seed)
 
         # Choose the agent's location uniformly at random
-        self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
-        while not self._on_grid(self._agent_location):   # TODO: randomly generate an integer state that is mapped to a valid grid cell
-            self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
-
+        agent_location_id = self.np_random.integers(0, self.n_states, size=1, dtype=int)
+        self._agent_location = self._states[agent_location_id].flatten()
+        
         # We will sample the target's location randomly until it does not coincide with the agent's location
         if self.use_target:
             self._target_location = self._agent_location
-            while (np.array_equal(self._target_location, self._agent_location)
-                or (not self._on_grid(self._target_location))   # TODO: randomly generate an integer state that is mapped to a valid grid cell
-            ):
-                self._target_location = self.np_random.integers(
-                    0, self.size, size=2, dtype=int
-                )
+            while np.array_equal(self._target_location, self._agent_location):
+                target_location_id = self.np_random.integers(0, self.n_states, size=1, dtype=int)
+                self._target_location = self._states[target_location_id].flatten()
 
         observation = self._get_obs()
         info = self._get_info()
@@ -147,9 +143,11 @@ class GridEnv(gym.Env):
         # Map the action (element of {0,1,2,3}) to the direction we walk in
         direction = self._action_to_direction[action]
         # We use `np.clip` to make sure we don't leave the grid
-        agent_location_new = np.clip(
-            self._agent_location + direction, 0, self.size - 1
-        )
+        agent_location_new = self._agent_location + direction
+        agent_location_new[0] = np.clip(agent_location_new[0], 0, self.width - 1)
+        agent_location_new[1] = np.clip(agent_location_new[1], 0, self.height - 1)
+
+        # Update agent location if new location is empty
         if self.grid[agent_location_new[0], agent_location_new[1]]:
             self._agent_location = agent_location_new
 
@@ -173,7 +171,7 @@ class GridEnv(gym.Env):
         if self.render_mode == "rgb_array":
             return self._render_frame()
 
-    def _render_frame(self):
+    def _render_frame(self):   # TODO: consider non-square grids
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()

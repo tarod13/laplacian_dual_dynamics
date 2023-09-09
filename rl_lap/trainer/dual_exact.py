@@ -93,10 +93,21 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
     def update_error_estimates(self, params, errors) -> Tuple[dict]:   # TODO: Handle better the fact that params are an array
         updates = {}
         for error_type in ['errors', 'squared_errors']:
+            # Get old error estimates
             old = params[error_type]
-            update_rate = self.error_estimate_update_rate if error_type == 'errors' else self.sq_error_estimate_update_rate
+            norm_old = jnp.linalg.norm(old)
+
+            # Set update rate to 1 in the first iteration
+            if norm_old == 0:
+                update_rate = 1
+            else:
+                update_rate = self.error_estimate_update_rate if error_type == 'errors' else self.sq_error_estimate_update_rate
+            
+            # Update error estimates
             update = old + update_rate * (errors[error_type] - old)   # The first update might be too large
             updates[error_type] = update
+            
+            # Generate dictionary with error estimates for logging
             if error_type == 'errors':
                 error_dict = {
                     f'error({i},{j})': update[i,j]
@@ -191,6 +202,7 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         error_matrix = params['errors']
         dual_variables = params['duals']
         updates = jnp.tril(error_matrix)
+        dual_velocities = params['dual_velocities']
 
         # Calculate updated duals
         updated_duals = dual_variables + self.lr_duals * updates
@@ -208,6 +220,12 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
 
         # Update params, making sure that the duals are lower triangular
         params['duals'] = jnp.tril(updated_duals)
+        
+        # Update dual velocity
+        updates = updated_duals - dual_variables
+        updated_dual_velocities = dual_velocities + self.lr_dual_velocities * (updates - dual_velocities)
+        params['dual_velocities'] = updated_dual_velocities
+        
         return params
     
     def reset_duals(self, params):

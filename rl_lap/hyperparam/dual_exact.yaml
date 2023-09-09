@@ -20,7 +20,7 @@ print_freq: 10000
 save_freq: 100000
 max_episode_steps: 50
 seed: 1234
-env_name: GridRoomSym-4
+env_name: GridMaze-7
 env_family: Grid-v0
 nn_library: haiku-v2
 lr: 0.0001
@@ -48,6 +48,7 @@ use_lower_triangular: False   # Add the option to use lower triangular matrix
 error_estimate_update_rate: 1
 sq_error_estimate_update_rate: 0.1
 lr_duals: 0.01
+lr_dual_velocities: 0.01
 min_duals: -100
 max_duals: 100
 normalize_dual_updates: False

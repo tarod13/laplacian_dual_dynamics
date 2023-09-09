@@ -46,8 +46,9 @@ orthogonality_tolerance: 0.0
 optimize_dual_logs: False
 use_lower_triangular: False   # Add the option to use lower triangular matrix
 error_estimate_update_rate: 1
-sq_error_estimate_update_rate: 0.1
+sq_error_estimate_update_rate: 0.01
 lr_duals: 0.01
+lr_dual_velocities: 0.01
 min_duals: -100
 max_duals: 100
 normalize_dual_updates: False
@@ -59,8 +60,9 @@ dual_threshold: 1.0
 barrier_threshold: 0.001
 barrier_increase_factor: 1.1
 barrier_initial_val: 1.0
-lr_barrier_coefs: 0.1
+lr_barrier_coefs: 1.0
 min_barrier_coefs: -10000
 max_barrier_coefs: 10000
 use_barrier_update_v2: True
 use_additive_duals: False
+use_barrier_normalization: True

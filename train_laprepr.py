@@ -62,6 +62,7 @@ def main(hyperparams):
         # Initialize dual parameters as lower triangular matrix with ones
         dual_initial_val = hparam_yaml['dual_initial_val']
         additional_params['duals'] = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
+        additional_params['dual_velocities'] = jnp.zeros_like(additional_params['duals'])
 
         # Initialize state dict with error and accumulated error matrices
         additional_params['errors'] = jnp.zeros((d, d))
@@ -122,7 +123,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default= 'dual_exact.yaml', # 'dual_b1.yaml', #'dual.yaml', #'dual_exact.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
+        default= 'coefficient_augmented_martin.yaml', # 'dual_b1.yaml', #'dual.yaml', #'dual_exact.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
         help='Configuration file to use.'
     )
     parser.add_argument(

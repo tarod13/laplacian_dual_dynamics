@@ -120,9 +120,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                     cosine_function = self.compute_cosine_similarity
 
                 cosine_similarity, similarities = cosine_function(params['encoder'])
+                maximal_cosine_similarity, maximal_similarities = self.compute_maximal_cosine_similarity(params['encoder'])
+                
                 metrics_dict['cosine_similarity'] = cosine_similarity
+                metrics_dict['maximal_cosine_similarity'] = maximal_cosine_similarity
                 for feature in range(len(similarities)):
                     metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]
+                    metrics_dict[f'maximal_cosine_similarity_{feature}'] = maximal_similarities[feature]
                 metrics_dict['grad_step'] = self._global_step
                 metrics_dict['examples'] = self._global_step * self.batch_size
                 metrics_dict['wall_clock_time'] = timer.time_cost()
@@ -131,6 +135,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
                 self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
                 self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
+                self.train_info['max_cos_sim'] = np.array([jax.device_get(maximal_cosine_similarity)])[0]
 
                 steps_per_sec = timer.steps_per_sec(step)
                 print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
@@ -258,8 +263,28 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Log environment eigenvalues
         self.env.round_eigenvalues(self.eigval_precision_order)
         eigenvalues = self.env.get_eigenvalues()
+        print(f'Environment: {self.env_name}')
         print(f'Environment eigenvalues: {eigenvalues}')
-        print(f'First {self.d} eigenvalues: {eigenvalues[:self.d]}')
+
+        # Create eigenvector dictionary
+        real_eigval = eigenvalues[:self.d]
+        real_eigvec = self.env.get_eigenvectors()[:,:self.d]
+        real_eigvec = jnp.array(real_eigvec)
+        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
+        real_eigvec = real_eigvec / real_norms
+
+        # Store eigenvectors in a dictionary corresponding to each eigenvalue
+        eigvec_dict = {}
+        for i, eigval in enumerate(real_eigval):
+            if eigval not in eigvec_dict:
+                eigvec_dict[eigval] = []
+            eigvec_dict[eigval].append(real_eigvec[:,i])
+        self.eigvec_dict = eigvec_dict
+        
+        # Print multiplicity of first eigenvalues
+        multiplicities = [len(eigvec_dict[eigval]) for eigval in eigvec_dict.keys()]
+        for i, eigval in enumerate(eigvec_dict.keys()):
+            print(f'Eigenvalue {eigval} has multiplicity {multiplicities[i]}')
 
         if self.use_wandb:
             eigval_dict = {
@@ -357,22 +382,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         return cosine_similarity, similarities
     
     def compute_cosine_similarity_v2(self, params_encoder):
-        # Get baseline parameters
-        states = self.env.get_states()
-        real_eigval = self.env.get_eigenvalues()[:self.d]
-        real_eigvec = self.env.get_eigenvectors()[:,:self.d]
-        real_eigvec = jnp.array(real_eigvec)
-        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
-        real_eigvec = real_eigvec / real_norms
-
-        # Store eigenvectors in a dictionary corresponding to each eigenvalue
-        eigvec_dict = {}
-        for i, eigval in enumerate(real_eigval):
-            if eigval not in eigvec_dict:
-                eigvec_dict[eigval] = []
-            eigvec_dict[eigval].append(real_eigvec[:,i])
-
         # Get approximated eigenvectors
+        states = self.env.get_states()
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms
@@ -384,18 +395,18 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             rotation_function = self.find_best_basis_for_eigenvectors
 
         # Compute cosine similarities for both directions
-        unique_real_eigval = sorted(eigvec_dict.keys(), reverse=True)
+        unique_real_eigval = sorted(self.eigvec_dict.keys(), reverse=True)
         # print(f'Unique eigenvalues: {unique_real_eigval}')
         id_ = 0
         similarities = []
         for i, eigval in enumerate(unique_real_eigval):
-            multiplicity = len(eigvec_dict[eigval])
+            multiplicity = len(self.eigvec_dict[eigval])
             # print(f'Eigenvalue {eigval} has multiplicity {multiplicity}')
             
             # Compute cosine similarity
             if multiplicity == 1:
                 # Get eigenvectors associated with the current eigenvalue
-                current_real_eigvec = eigvec_dict[eigval][0]
+                current_real_eigvec = self.eigvec_dict[eigval][0]
                 current_approx_eigvec = approx_eigvec[:,id_]
 
                 # Compute cosine similarity
@@ -403,8 +414,10 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 similarities.append(jnp.maximum(pos_sim, -pos_sim))
             else:
                 # Get eigenvectors associated with the current eigenvalue
-                current_real_eigvec = eigvec_dict[eigval]
+                current_real_eigvec = self.eigvec_dict[eigval]
                 current_approx_eigvec = approx_eigvec[:,id_:id_+multiplicity]
+                
+                # Rotate approximated eigenvectors to match the space spanned by the real eigenvectors
                 optimal_approx_eigvec = rotation_function(
                     current_real_eigvec, current_approx_eigvec)
                 norms = jnp.linalg.norm(optimal_approx_eigvec, axis=0, keepdims=True)
@@ -513,6 +526,42 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Obtain list of rotated eigenvectors
         rotated_eigvec = E.dot(R)
         return rotated_eigvec
+    
+    def compute_maximal_cosine_similarity(self, params_encoder):
+        # Get approximated eigenvectors
+        states = self.env.get_states()
+        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
+        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
+        approx_eigvec = approx_eigvec / norms
+        
+        # Select rotation function
+        rotation_function = self.rotate_eigenvectors
+        
+        real_eigvec = []
+        for eigval in self.eigvec_dict.keys():
+            real_eigvec = real_eigvec + self.eigvec_dict[eigval]
+                
+        # Rotate approximated eigenvectors to match the space spanned by the real eigenvectors
+        optimal_approx_eigvec = rotation_function(
+            real_eigvec, approx_eigvec)
+        norms = jnp.linalg.norm(optimal_approx_eigvec, axis=0, keepdims=True)
+        optimal_approx_eigvec = optimal_approx_eigvec / norms   # We normalize, since the cosine similarity is invariant to scaling
+        
+        # Compute cosine similarity
+        similarities = []
+        for j in range(self.d):
+            real = real_eigvec[j]
+            approx = optimal_approx_eigvec[:,j]
+            pos_sim = (real).dot(approx)
+            similarities.append(jnp.maximum(pos_sim, -pos_sim))
+
+        # Convert to array
+        similarities = jnp.array(similarities)
+
+        # Compute average cosine similarity
+        cosine_similarity = similarities.mean()
+
+        return cosine_similarity, similarities
 
     @abstractmethod
     def loss_function(self, *args, **kwargs):

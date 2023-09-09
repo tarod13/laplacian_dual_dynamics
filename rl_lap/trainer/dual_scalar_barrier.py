@@ -82,3 +82,15 @@ class ScalarBarrierDualLaplacianEncoderTrainer(ExactDualLaplacianEncoderTrainer)
         # Update params, making sure that the coefficients are lower triangular
         params['barrier_coefs'] = updated_barrier_coefficients
         return params
+    
+    def loss_function(
+            self, params, train_batch, **kwargs
+        ) -> Tuple[jnp.ndarray]:
+        loss, aux = super().loss_function(params, train_batch, **kwargs)
+        barrier_coefficient = params['barrier_coefs'][0,0]
+
+        # Normalize loss by barrier coefficient
+        if self.use_barrier_normalization:
+            loss /= jax.lax.stop_gradient(barrier_coefficient)
+
+        return loss, aux
