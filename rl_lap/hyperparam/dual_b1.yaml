@@ -61,8 +61,9 @@ barrier_threshold: 0.001
 barrier_increase_factor: 1.1
 barrier_initial_val: 1.0
 lr_barrier_coefs: 1.0
-min_barrier_coefs: -10000
+min_barrier_coefs: 0
 max_barrier_coefs: 10000
-use_barrier_update_v2: True
+barrier_update_version: 3
 use_additive_duals: False
 use_barrier_normalization: True
+barrier_beta: 0.001

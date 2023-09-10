@@ -96,12 +96,11 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
             # Get old error estimates
             old = params[error_type]
             norm_old = jnp.linalg.norm(old)
-
+            
             # Set update rate to 1 in the first iteration
-            if norm_old == 0:
-                update_rate = 1
-            else:
-                update_rate = self.error_estimate_update_rate if error_type == 'errors' else self.sq_error_estimate_update_rate
+            init_coeff = jnp.isclose(norm_old, 0.0, rtol=1e-10, atol=1e-13) 
+            non_init_update_rate = self.error_estimate_update_rate if error_type == 'errors' else self.sq_error_estimate_update_rate
+            update_rate = init_coeff + (1 - init_coeff) * non_init_update_rate
             
             # Update error estimates
             update = old + update_rate * (errors[error_type] - old)   # The first update might be too large
@@ -256,10 +255,9 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         return params
     
     def update_barrier_coefficients(self, params):   # TODO: eliminate this function when the best version is found
-        if not self.use_barrier_update_v2:
-            params = self.update_barrier_coefficients_v1(params)
-        else:
-            params = self.update_barrier_coefficients_v2(params)
+        barrier_function_name = f'update_barrier_coefficients_v{self.barrier_update_version}'
+        barrier_function = getattr(self, barrier_function_name)
+        params = barrier_function(params)
         return params
 
     def update_barrier_coefficients_v1(self, params):

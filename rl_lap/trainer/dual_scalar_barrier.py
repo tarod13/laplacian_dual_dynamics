@@ -83,6 +83,36 @@ class ScalarBarrierDualLaplacianEncoderTrainer(ExactDualLaplacianEncoderTrainer)
         params['barrier_coefs'] = updated_barrier_coefficients
         return params
     
+    def update_barrier_coefficients_v3(self, params):
+        '''
+            Update barrier coefficients using some approximation 
+            of the barrier gradient in the modified Lagrangian, and
+            the change rate of the dual variables.
+        '''
+        barrier_coefficients = params['barrier_coefs']
+        squared_error_matrix = params['squared_errors']
+        dual_velocities = jnp.abs(params['dual_velocities'])
+
+        updates = jnp.tril(squared_error_matrix - self.orthogonality_tolerance)
+        updates = jnp.clip(updates, a_min=0, a_max=None)
+
+        gates = jnp.exp(-self.barrier_beta / (dual_velocities + 1e-10))
+        updates = (updates * gates).mean()
+
+        # Calculate updated coefficients
+        updated_barrier_coefficients = barrier_coefficients + self.lr_barrier_coefs * updates
+
+        # Clip coefficients to be in the range [min_barrier_coefs, max_barrier_coefs]
+        updated_barrier_coefficients = jnp.clip(
+            updated_barrier_coefficients,
+            a_min=self.min_barrier_coefs,
+            a_max=self.max_barrier_coefs,
+        )   # TODO: Cliping is probably not the best way to handle this
+
+        # Update params, making sure that the coefficients are lower triangular
+        params['barrier_coefs'] = updated_barrier_coefficients
+        return params
+    
     def loss_function(
             self, params, train_batch, **kwargs
         ) -> Tuple[jnp.ndarray]:

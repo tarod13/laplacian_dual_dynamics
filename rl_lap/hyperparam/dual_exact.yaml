@@ -63,5 +63,5 @@ barrier_initial_val: 1.0
 lr_barrier_coefs: 0.1
 min_barrier_coefs: -10000
 max_barrier_coefs: 10000
-use_barrier_update_v2: True
+barrier_update_version: 2
 use_additive_duals: False
