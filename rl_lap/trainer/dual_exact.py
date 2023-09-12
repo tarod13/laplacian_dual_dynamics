@@ -35,7 +35,11 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         error_matrix_2 = jnp.tril(inner_product_matrix_2 - jnp.eye(self.d))
 
         error_matrix = 0.5 * (error_matrix_1 + error_matrix_2)
-        squared_error_matrix = error_matrix_1 * error_matrix_2 * self.implicit_orthogonality_weight
+
+        if self.use_abs_square_estimation:
+            squared_error_matrix = jnp.abs(error_matrix_1) * jnp.abs(error_matrix_2) * self.implicit_orthogonality_weight
+        else:
+            squared_error_matrix = error_matrix_1 * error_matrix_2 * self.implicit_orthogonality_weight
 
         inner_dict = {
             f'inner({i},{j})': inner_product_matrix_1[i,j]
@@ -189,7 +193,7 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
             ((step + 1) % self.update_barrier_every) == 0
         )
         if is_barrier_update_step:
-            params = self.update_barrier_coefficients(params)
+            params = self.update_barrier_coefficients(params, *args, **kwargs)
         
         return params
     
@@ -254,13 +258,13 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         params['squared_errors'] = error_update['squared_errors']
         return params
     
-    def update_barrier_coefficients(self, params):   # TODO: eliminate this function when the best version is found
+    def update_barrier_coefficients(self, params, *args, **kwargs):   # TODO: eliminate this function when the best version is found
         barrier_function_name = f'update_barrier_coefficients_v{self.barrier_update_version}'
         barrier_function = getattr(self, barrier_function_name)
-        params = barrier_function(params)
+        params = barrier_function(params, *args, **kwargs)
         return params
 
-    def update_barrier_coefficients_v1(self, params):
+    def update_barrier_coefficients_v1(self, params, *args, **kwargs):
         '''Increase barrier coefficient by a given factor'''
         barrier_coefficients = params['barrier_coefs']
         squared_errors = params['errors']**2
@@ -272,7 +276,7 @@ class ExactDualLaplacianEncoderTrainer(LaplacianEncoderTrainer):
         params['barrier_coefs'] = update_factors * barrier_coefficients   # TODO: consider some velocity term (if error is decreasing, don't update barrier coefficient)
         return params
     
-    def update_barrier_coefficients_v2(self, params):
+    def update_barrier_coefficients_v2(self, params, *args, **kwargs):
         '''
             Update barrier coefficients using some approximation 
             of the barrier gradient in the modified lagrangian.

@@ -9,13 +9,13 @@ env_name: null
 env_family: null
 model_cfg: null
 optimizer_cfg: null
-n_samples: 1000000
+n_samples: 3000000
 batch_size: 32
 discount: 0.9
 reg_neg: 0.0
-replay_buffer_size: 1000000
+replay_buffer_size: 3000000
 log_dir: '/tmp/rl_laprepr/log'
-total_train_steps: 4000000
+total_train_steps: 8000000
 print_freq: 10000
 save_freq: 100000
 max_episode_steps: 50
@@ -36,6 +36,7 @@ save_eig: True
 save_model: False
 save_model_every: 100000
 algorithm: dual-b1
+use_abs_square_estimation: False
 update_dual_every: 1
 reset_dual_every: 1000000000000
 update_dual_after: 0
@@ -47,7 +48,7 @@ optimize_dual_logs: False
 use_lower_triangular: False   # Add the option to use lower triangular matrix
 error_estimate_update_rate: 1
 sq_error_estimate_update_rate: 0.01
-lr_duals: 0.01
+lr_duals: 0.001
 lr_dual_velocities: 0.01
 min_duals: -100
 max_duals: 100
@@ -67,3 +68,5 @@ barrier_update_version: 3
 use_additive_duals: False
 use_barrier_normalization: True
 barrier_beta: 0.001
+use_barrier_for_duals: False
+barrier_mean_or_sum: sum

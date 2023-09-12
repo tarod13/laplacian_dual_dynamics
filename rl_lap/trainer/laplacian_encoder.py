@@ -35,7 +35,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.build_environment()
         self.collect_experience()
         self.train_step = jax.jit(self.train_step)   # TODO: _train_step
-        self.compute_cosine_similarity = jax.jit(self.compute_cosine_similarity)
+        # self.compute_cosine_similarity = jax.jit(self.compute_cosine_similarity)
+        # self.compute_cosine_similarity_v2 = jax.jit(self.compute_cosine_similarity_v2)
+        # self.compute_maximal_cosine_similarity = jax.jit(self.compute_maximal_cosine_similarity)
         self.train_info = OrderedDict()
         self._global_step = 0
         self._best_cosine_similarity = -1
@@ -78,7 +80,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Update the training state
         params = self.update_training_state(params, aux[1])
 
-        return params, opt_state, aux[0]
+        return params, opt_state, aux[0], grad_norms
 
     def train(self) -> None:
 
@@ -102,11 +104,11 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         for step in range(self.total_train_steps):
 
             train_batch = self._get_train_batch()
-            params, opt_state, metrics = self.train_step(params, train_batch, opt_state)
+            params, opt_state, metrics, grad_norms = self.train_step(params, train_batch, opt_state)
             
             self._global_step += 1   # TODO: Replace with self.step_counter
 
-            params = self.additional_update_step(step, params)
+            params = self.additional_update_step(step, params, grad_norms=grad_norms)
 
             # Save and print info
             is_log_step = ((step + 1) % self.print_freq) == 0

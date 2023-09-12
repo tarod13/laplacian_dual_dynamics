@@ -36,6 +36,7 @@ save_eig: True
 save_model: False
 save_model_every: 100000
 algorithm: dual-exact
+use_abs_square_estimation: False
 update_dual_every: 1
 reset_dual_every: 1000000000000
 update_dual_after: 0
