@@ -65,7 +65,7 @@ class ScalarBarrierDualLaplacianEncoderTrainer(ExactDualLaplacianEncoderTrainer)
         
         return orthogonality_loss, barrier_loss, dual_dict
     
-    def update_barrier_coefficients_v1(self, params):
+    def update_barrier_coefficients_v1(self, params, *args, **kwargs):
         '''Increase barrier coefficient by a given factor'''
         barrier_coefficients = params['barrier_coefs']
         squared_errors = params['errors']**2
@@ -77,7 +77,7 @@ class ScalarBarrierDualLaplacianEncoderTrainer(ExactDualLaplacianEncoderTrainer)
         params['barrier_coefs'] = update_factors.mean() * barrier_coefficients   # TODO: consider some velocity term (if error is decreasing, don't update barrier coefficient)
         return params
     
-    def update_barrier_coefficients_v2(self, params):
+    def update_barrier_coefficients_v2(self, params, *args, **kwargs):
         '''
             Update barrier coefficients using some approximation 
             of the barrier gradient in the modified lagrangian.

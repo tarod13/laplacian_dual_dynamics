@@ -9,11 +9,11 @@ env_name: null
 env_family: null
 model_cfg: null
 optimizer_cfg: null
-n_samples: 3000000
+n_samples: 1000000
 batch_size: 32
 discount: 0.9
 reg_neg: 0.0
-replay_buffer_size: 3000000
+replay_buffer_size: 1000000
 log_dir: '/tmp/rl_laprepr/log'
 total_train_steps: 8000000
 print_freq: 10000
@@ -48,7 +48,7 @@ optimize_dual_logs: False
 use_lower_triangular: False   # Add the option to use lower triangular matrix
 error_estimate_update_rate: 1
 sq_error_estimate_update_rate: 0.01
-lr_duals: 0.001
+lr_duals: 0.0001
 lr_dual_velocities: 0.01
 min_duals: -100
 max_duals: 100
@@ -60,7 +60,7 @@ reset_proportion: 0.5
 dual_threshold: 1.0
 barrier_threshold: 0.001
 barrier_increase_factor: 1.1
-barrier_initial_val: 1.0
+barrier_initial_val: 20.0
 lr_barrier_coefs: 1.0
 min_barrier_coefs: 0
 max_barrier_coefs: 10000

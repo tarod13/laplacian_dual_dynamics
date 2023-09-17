@@ -271,16 +271,29 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Create eigenvector dictionary
         real_eigval = eigenvalues[:self.d]
         real_eigvec = self.env.get_eigenvectors()[:,:self.d]
-        real_eigvec = jnp.array(real_eigvec)
-        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
-        real_eigvec = real_eigvec / real_norms
+
+
+        assert not np.isnan(real_eigvec).any(), \
+            f'NaN values in the real eigenvectors: {real_eigvec}'
+
+        jnp_real_eigvec = jnp.array(real_eigvec, dtype=jnp.float32)
+
+        assert not jnp.isnan(jnp_real_eigvec).any(), \
+            f'NaN values in the real eigenvectors: {real_eigvec}'
+
+        jnp_real_norms = jnp.linalg.norm(jnp_real_eigvec, axis=0, keepdims=True)
+        jnp_real_eigvec_norm = jnp_real_eigvec / jnp_real_norms
+
+        # Check if any NaN values are present
+        assert not jnp.isnan(jnp_real_eigvec_norm).any(), \
+            f'NaN values in the real eigenvectors: {jnp_real_eigvec_norm}'
 
         # Store eigenvectors in a dictionary corresponding to each eigenvalue
         eigvec_dict = {}
         for i, eigval in enumerate(real_eigval):
             if eigval not in eigvec_dict:
                 eigvec_dict[eigval] = []
-            eigvec_dict[eigval].append(real_eigvec[:,i])
+            eigvec_dict[eigval].append(jnp_real_eigvec_norm[:,i])
         self.eigvec_dict = eigvec_dict
         
         # Print multiplicity of first eigenvalues
@@ -411,6 +424,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 current_real_eigvec = self.eigvec_dict[eigval][0]
                 current_approx_eigvec = approx_eigvec[:,id_]
 
+                # Check if any NaN values are present
+                assert not jnp.isnan(current_approx_eigvec).any(), \
+                    f'NaN values in the approximated eigenvector: {current_approx_eigvec}'
+                
+                assert not jnp.isnan(current_real_eigvec).any(), \
+                    f'NaN values in the real eigenvector: {current_real_eigvec}'
+
                 # Compute cosine similarity
                 pos_sim = (current_real_eigvec).dot(current_approx_eigvec)
                 similarities.append(jnp.maximum(pos_sim, -pos_sim))
@@ -422,8 +442,16 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 # Rotate approximated eigenvectors to match the space spanned by the real eigenvectors
                 optimal_approx_eigvec = rotation_function(
                     current_real_eigvec, current_approx_eigvec)
+
+                # Check if the rotation function failed by returning some NaN values                
+                assert not jnp.isnan(optimal_approx_eigvec).any(), \
+                    f'Rotation function returned NaN values: {optimal_approx_eigvec}'
+
                 norms = jnp.linalg.norm(optimal_approx_eigvec, axis=0, keepdims=True)
                 optimal_approx_eigvec = optimal_approx_eigvec / norms   # We normalize, since the cosine similarity is invariant to scaling
+                
+                assert not jnp.isnan(optimal_approx_eigvec).any(), \
+                    f'Rotation function returned NaN values: {optimal_approx_eigvec}'
                 
                 # Compute cosine similarity
                 for j in range(multiplicity):
@@ -440,6 +468,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         # Compute average cosine similarity
         cosine_similarity = similarities.mean()
+
+        assert not jnp.isnan(similarities).any(), \
+            f'NaN values in the cosine similarities: {similarities}'
 
         return cosine_similarity, similarities
     

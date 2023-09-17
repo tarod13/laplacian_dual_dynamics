@@ -26,7 +26,7 @@ class GridEnv(gym.Env):
     Grid environment 
     '''
     metadata = {
-        "render_modes": ["human", "rgb_array"], "render_fps": 5000}
+        "render_modes": ["human", "rgb_array"], "render_fps": 50000}
 
     def __init__(
             self, 
@@ -34,12 +34,15 @@ class GridEnv(gym.Env):
             render_mode=None, 
             use_target: bool = True,
             eig: Optional[Tuple] = None,
+            render_fps=None,
         ):
         self.grid = txt_to_grid(path)
         self.height = self.grid.shape[0]
         self.width = self.grid.shape[1]
         self.window_size = 512   # Size of the PyGame window
         self.use_target = use_target
+        if not render_fps is None:
+            self.metadata["render_fps"] = render_fps
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
@@ -144,8 +147,8 @@ class GridEnv(gym.Env):
         direction = self._action_to_direction[action]
         # We use `np.clip` to make sure we don't leave the grid
         agent_location_new = self._agent_location + direction
-        agent_location_new[0] = np.clip(agent_location_new[0], 0, self.width - 1)
-        agent_location_new[1] = np.clip(agent_location_new[1], 0, self.height - 1)
+        agent_location_new[0] = np.clip(agent_location_new[0], 0, self.height - 1)
+        agent_location_new[1] = np.clip(agent_location_new[1], 0, self.width - 1)
 
         # Update agent location if new location is empty
         if self.grid[agent_location_new[0], agent_location_new[1]]:
@@ -181,9 +184,10 @@ class GridEnv(gym.Env):
 
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))
-        pix_square_size = (
-            self.window_size / self.size
-        )  # The size of a single grid square in pixels
+        pix_square_sizes = np.array([
+            self.window_size / self.height,
+            self.window_size / self.width,
+        ])  # The size of a single grid square in pixels
 
         # First we draw the target
         if self.use_target:
@@ -191,8 +195,8 @@ class GridEnv(gym.Env):
                 canvas,
                 (255, 0, 0),
                 pygame.Rect(
-                    pix_square_size * self._target_location,
-                    (pix_square_size, pix_square_size),
+                    (pix_square_sizes * self._target_location)[::-1],
+                    pix_square_sizes[::-1],
                 ),
             )
 
@@ -200,36 +204,38 @@ class GridEnv(gym.Env):
         pygame.draw.circle(
             canvas,
             (0, 0, 255),
-            (self._agent_location + 0.5) * pix_square_size,
-            pix_square_size / 3,
+            ((self._agent_location + 0.5) * pix_square_sizes)[::-1],
+            min(pix_square_sizes) / 3,
         )
 
         # Now we draw the walls
-        for i, j in product(range(self.size),range(self.size)):
+        for i, j in product(range(self.height), range(self.width)):
             if not self.grid[i,j]:
                 pygame.draw.rect(
                     canvas,
                     (110, 110, 110),
                     pygame.Rect(
-                        pix_square_size * np.array([i,j]),
-                        (pix_square_size, pix_square_size),
+                        (pix_square_sizes * np.array([i,j]))[::-1],
+                        (pix_square_sizes)[::-1],
                     ),
                 )
 
         # Finally, add some gridlines
-        for x in range(self.size + 1):
+        for x in range(self.height + 1):
             pygame.draw.line(
                 canvas,
                 0,
-                (0, pix_square_size * x),
-                (self.window_size, pix_square_size * x),
+                (0, pix_square_sizes[0] * x),
+                (self.window_size, pix_square_sizes[0] * x),
                 width=3,
             )
+
+        for x in range(self.width + 1):
             pygame.draw.line(
                 canvas,
                 0,
-                (pix_square_size * x, 0),
-                (pix_square_size * x, self.window_size),
+                (pix_square_sizes[1] * x, 0),
+                (pix_square_sizes[1] * x, self.window_size),
                 width=3,
             )
 
@@ -335,14 +341,20 @@ class GridEnv(gym.Env):
         # Normalize eigenvectors
         eigvecs = eigvecs / np.linalg.norm(eigvecs, axis=0, keepdims=True)
 
+        # Obtain sign of first non-zero element of eigenvectors
+        first_non_zero_id = np.argmax(eigvecs != 0, axis=1)
+        
         # Choose directions of eigenvectors
-        eigvecs = np.sign(eigvecs[0,:].reshape(1,-1)) * eigvecs
+        signs = np.sign(eigvecs[np.arange(eigvecs.shape[0]), first_non_zero_id])
+        eigvecs = eigvecs * signs.reshape(1,-1)
 
         # Check if symmetric
         if np.allclose(self._dyn_mat, self._dyn_mat.T):
             print('Dynamics matrix is symmetric.')
         else:
             print('Dynamics matrix is not symmetric.')
+
+        a = 0
 
         return eigvals, eigvecs
     
