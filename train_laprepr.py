@@ -59,6 +59,9 @@ def main(hyperparams):
     additional_params = {}
     
     if algorithm in ['dual', 'dual-rs', 'dual-exact', 'dual-b1']:
+        if 'regularization_weight' in hparam_yaml:
+            hparam_yaml['barrier_initial_val'] = hparam_yaml['regularization_weight']
+
         # Initialize dual parameters as lower triangular matrix with ones
         dual_initial_val = hparam_yaml['dual_initial_val']
         additional_params['duals'] = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
