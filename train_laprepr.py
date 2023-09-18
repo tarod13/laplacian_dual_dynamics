@@ -126,8 +126,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "exp_label", 
         type=str, 
-        help="Experiment label", 
-        required=True
+        help="Experiment label",
     )
 
     parser.add_argument(
