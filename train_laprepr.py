@@ -121,6 +121,13 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument(
+        "exp_label", 
+        type=str, 
+        help="Experiment label", 
+        required=True
+    )
+
+    parser.add_argument(
         '--config_file', 
         type=str, 
         default= 'dual_b1.yaml', # 'dual_b1.yaml', #'dual.yaml', #'dual_exact.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
