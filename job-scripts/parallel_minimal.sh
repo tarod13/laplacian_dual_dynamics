@@ -19,7 +19,7 @@ R_W=$((${R_ENV} % 11))
 N_CONFIG=0
 N_W=$((${R_W} / 1))
 
-SEEDS="./rl_lap/hyperparam/seed_list_minimal${N_SEED}.txt"
+SEEDS="./rl_lap/hyperparam/seed_list_minimal_${N_SEED}.txt"
 CONFIG=${configs[$N_CONFIG]}
 PROJECT_FOLDER="/project/def-mbowling/diegog/laplacian_dual_dynamics/"
 ENV=${envs[$N_ENV]}
