@@ -11,18 +11,18 @@ import optax
 import gymnasium as gym
 from gymnasium.wrappers import TimeLimit
 
-import rl_lap.env
-from rl_lap.env.wrapper.norm_obs import NormObs
+import src.env
+from src.env.wrapper.norm_obs import NormObs
 
-from rl_lap.tools import timer_tools
-from rl_lap.tools import saving
+from src.tools import timer_tools
+from src.tools import saving
 
-# from rl_lap.trainer import (
+# from src.trainer import (
 #     ScalarBarrierDualLaplacianEncoderTrainer,
 # )
-from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
+from src.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
-from rl_lap.nets import (
+from src.nets import (
     MLP, generate_hk_module_fn,
 )
 import wandb
@@ -41,7 +41,7 @@ def create_env(
         max_episode_steps
     ):
     # Create environment
-        path_txt_grid = f'./rl_lap/env/grid/txts/{env_name}.txt'
+        path_txt_grid = f'./src/env/grid/txts/{env_name}.txt'
         env = gym.make(
             model_fn,
             model_params,
@@ -68,7 +68,7 @@ def create_env(
 
 def main(hyperparams):
     # Load YAML hyperparameters
-    with open(f'./rl_lap/hyperparam/{hyperparams.config_file}', 'r') as f:
+    with open(f'./src/hyperparam/{hyperparams.config_file}', 'r') as f:
         hparam_yaml = yaml.safe_load(f)   # TODO: Check necessity of hyperparams
 
     # Replace hparams with command line arguments
