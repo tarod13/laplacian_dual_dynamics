@@ -17,4 +17,4 @@ reg_weight=$2
 log_dir=$3
 
 # Run your Python script with the specified parameters
-apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B /project/def-mbowling/diegog/laplacian_dual_dynamics/ --pwd /pwd ~/apptainer/lk_haiku.sif python3 train_laprepr.py "E2" --save_dir "$log_dir" --config_file generalized_gdo.yaml --env_name "$env_name" --regularization_weight "$reg_weight" --seed 1234 --use_wandb
+apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B /project/def-mbowling/diegog/laplacian_dual_dynamics/ --pwd /pwd ~/apptainer/lk_haiku.sif python3 train_laprepr.py "E2" --save_dir "$log_dir" --config_file generalized_gdo.yaml --env_name "$env_name" --barrier_initial_val "$reg_weight" --seed 1234 --use_wandb
