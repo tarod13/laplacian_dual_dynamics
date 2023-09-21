@@ -194,10 +194,10 @@ if __name__ == '__main__':
         help='Hidden dimensions of the laplacian encoder.'
     )
     parser.add_argument(
-        '--regularization_weight', 
+        '--barrier_initial_val', 
         type=float, 
         default=None, 
-        help='Regularization weight.'
+        help='Initial value for barrier coefficient in quadratic penalty.'
     )
     
     hyperparams = parser.parse_args()

@@ -73,8 +73,9 @@ class GeneralizedGraphDrawingObjectiveTrainer(LaplacianEncoderTrainer):
         metrics_dict = {
             'train_loss': loss,
             'graph_loss': graph_loss,
-            'reg_loss': orthogonality_loss,
-            'barrier_loss': 0.0,
+            'linear_constraint_loss': 0.0,
+            'quadratic_constraint_loss': orthogonality_loss,
+            'barrier_coefficient': self.barrier_initial_val,
         }
         metrics = (loss, graph_loss, regularization_loss, metrics_dict)
         aux = (metrics, None)
