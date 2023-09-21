@@ -15,7 +15,6 @@ num_tasks=$(( ${#env_names[@]} * ${#reg_weights[@]} ))
 
 # Set up the environment
 cd ~/projects/def-bowling/diegog/laplacian_dual_dynamics
-module load apptainer
 
 # Loop over parameter combinations and launch jobs
 for env_name in "${env_names[@]}"; do
@@ -24,6 +23,6 @@ for env_name in "${env_names[@]}"; do
         log_dir="~/logs/laplacian_dual_dynamics/${job_name}"
 
         # Submit a job for each parameter combination
-        sbatch --export=ALL,env_name="$env_name",reg_weight="$reg_weight",log_dir="$log_dir" single_gpu_chatgpt.sh
+        sbatch --export=ALL,env_name="$env_name",reg_weight="$reg_weight",log_dir="$log_dir" job-scripts/single_gpu_chatgpt.sh
     done
 done
