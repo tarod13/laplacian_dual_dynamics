@@ -51,30 +51,9 @@ def main(hyperparams):
     hidden_dims = hparam_yaml['hidden_dims']
 
     encoder_fn = generate_hk_module_fn(MLP, d, hidden_dims, hparam_yaml['activation'])
-    # additional_params = {}
-    
-    # if algorithm in ['dual-exact', 'dual-b1']:
-    #     if 'regularization_weight' in hparam_yaml:
-    #         hparam_yaml['barrier_initial_val'] = hparam_yaml['regularization_weight']
-
-    #     # Initialize dual parameters as lower triangular matrix with ones
-    #     dual_initial_val = hparam_yaml['dual_initial_val']
-    #     additional_params['duals'] = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
-    #     additional_params['dual_velocities'] = jnp.zeros_like(additional_params['duals'])
-
-    #     # Initialize state dict with error and accumulated error matrices
-    #     additional_params['errors'] = jnp.zeros((d, d))
-        
-    #     if algorithm in ['dual-exact']:
-    #         barrier_initial_val = hparam_yaml['barrier_initial_val']
-    #         additional_params['barrier_coefs'] = jnp.tril(barrier_initial_val * jnp.ones((d, d)), k=0)
-    #         additional_params['squared_errors'] = jnp.zeros((d, d))
-    #     elif algorithm in ['dual-b1']:
-    #         barrier_initial_val = hparam_yaml['barrier_initial_val']
-    #         additional_params['barrier_coefs'] = jnp.tril(barrier_initial_val * jnp.ones((1, 1)), k=0)
-    #         additional_params['squared_errors'] = jnp.zeros((1, 1))
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
+    
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
 
     if hparam_yaml['use_wandb']:
@@ -197,7 +176,13 @@ if __name__ == '__main__':
         '--barrier_initial_val', 
         type=float, 
         default=None, 
-        help='Initial value for barrier coefficient in quadratic penalty.'
+        help='Initial value for barrier coefficient in the quadratic penalty.'
+    )
+    parser.add_argument(
+        '--lr_barrier_coefs', 
+        type=float, 
+        default=None, 
+        help='Learning rate of the barrier coefficient in the quadratic penalty.'
     )
     
     hyperparams = parser.parse_args()
