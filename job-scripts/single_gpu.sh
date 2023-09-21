@@ -10,4 +10,4 @@
 cd ~/projects/def-bowling/diegog/laplacian_dual_dynamics
 module load apptainer
 
-apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B /project/def-mbowling/diegog/laplacian_dual_dynamics/ --pwd /pwd ~/apptainer/lk_haiku.sif python3 train_laprepr.py "E2" --save_dir ~/logs/laplacian_dual_dynamics/ --config_file generalized_gdo.yaml --env_name GridMaze-19 --regularization_weight 1 --seed 1234
+apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B /project/def-mbowling/diegog/laplacian_dual_dynamics/ --pwd /pwd ~/apptainer/lk_haiku.sif python3 train_laprepr.py "E2" --save_dir ~/logs/laplacian_dual_dynamics/ --config_file generalized_gdo.yaml --env_name GridMaze-19 --regularization_weight 1 --seed 1234 --use_wandb
