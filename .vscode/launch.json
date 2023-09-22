@@ -30,6 +30,15 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": ["S-T1", "--use_wandb", "--config_file", "augmented.yaml", "--env_name", "GridMaze-32"],
+        }, 
+        {
+            "name": "Augmented Lagrangian turned into baseline: zero duals, symmetric constraints and monotonically increasing barrier",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["S-T1", "--use_wandb", "--config_file", "augmented_sczd.yaml", "--env_name", "GridRoom-16"],
         }
     ]
 }

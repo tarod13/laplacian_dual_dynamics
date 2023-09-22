@@ -303,7 +303,7 @@ class AugmentedLagrangianSCZDTrainer(GeneralizedAugmentedLagrangianTrainer):
     
     def init_additional_params(self, *args, **kwargs):        
         additional_params = {
-            'duals': self.dual_initial_val * jnp.ones(self.d, self.d),
+            'duals': self.dual_initial_val * jnp.ones((self.d, self.d)),
             'barrier_coefs': self.barrier_initial_val * jnp.ones((1, 1)),
             'dual_velocities': jnp.zeros((self.d, self.d)),
             'errors': jnp.zeros((self.d, self.d)),
