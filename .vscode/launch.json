@@ -20,7 +20,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["S-T1", "--use_wandb", "--config_file", "quadratic_penalty_ggdo.yaml", "--env_name", "GridRoom-16"],
+            "args": ["S-T1", "--use_wandb", "--config_file", "quadratic_penalty_ggdo.yaml", "--env_name", "GridRoom-16", "--lr_barrier_coefs", "0.1"],
         }, 
         {
             "name": "Augmented Lagrangian: learn duals and monotonically increase the barrier parameter",

@@ -367,12 +367,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         states = self.env.get_states()
         real_eigvec = self.env.get_eigenvectors()[:,:self.d]
         real_eigvec = jnp.array(real_eigvec)
-        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True)
+        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True).clip(min=1e-10)
         real_eigvec = real_eigvec / real_norms
 
         # Get approximated eigenvectors
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
-        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
+        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True).clip(min=1e-10)
         approx_eigvec = approx_eigvec / norms
         
         # Compute cosine similarities for both directions
@@ -389,7 +389,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         states = self.env.get_states()
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
-        approx_eigvec = approx_eigvec / norms
+        approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
         
         # Compute cosine similarities for both directions
         unique_real_eigval = sorted(self.eigvec_dict.keys(), reverse=True)
@@ -427,7 +427,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                     current_real_eigvec, current_approx_eigvec)
 
                 norms = jnp.linalg.norm(optimal_approx_eigvec, axis=0, keepdims=True)
-                optimal_approx_eigvec = optimal_approx_eigvec / norms   # We normalize, since the cosine similarity is invariant to scaling
+                optimal_approx_eigvec = optimal_approx_eigvec / norms.clip(min=1e-10)   # We normalize, since the cosine similarity is invariant to scaling
                 
                 # Compute cosine similarity
                 for j in range(multiplicity):
@@ -471,7 +471,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         A = E.T.dot(E)
         b = 0.5*E.T.dot(u1)
         x = jnp.linalg.solve(A, b)
-        u1_approx = E.dot(x).reshape(-1,1)
+        u1_approx = E.dot(x).reshape(-1,1).clip(min=1e-10)
         u1_approx = u1_approx / jnp.linalg.norm(u1_approx)
         rotated_eigvec.append(u1_approx)
 
@@ -489,7 +489,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             mu_leq_k = jnp.linalg.solve(Ak, bbk)
             wk = xk - Xk.dot(mu_leq_k)
             uk_approx = E.dot(wk).reshape(-1,1)
-            uk_approx = uk_approx / jnp.linalg.norm(uk_approx)
+            uk_approx = uk_approx / jnp.linalg.norm(uk_approx).clip(min=1e-10)
             rotated_eigvec.append(uk_approx)
 
         rotated_eigvec = jnp.concatenate(rotated_eigvec, axis=1)
@@ -514,7 +514,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Compute first eigenvector
         u1 = u_list[0].reshape(-1,1)
         w1_times_lambda_1 = 0.5*E.T.dot(u1)
-        w1 = w1_times_lambda_1 / jnp.linalg.norm(w1_times_lambda_1)
+        w1 = w1_times_lambda_1 / jnp.linalg.norm(w1_times_lambda_1).clip(min=1e-10)
         rotation_vectors.append(w1)
 
         # Compute remaining eigenvectors
@@ -526,7 +526,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             Ak = Wk.T.dot(Wk)
             mu_k = jnp.linalg.solve(Ak, bk)
             wk_times_lambda_k = 0.5*(improper_wk - Wk.dot(mu_k))
-            wk = wk_times_lambda_k / jnp.linalg.norm(wk_times_lambda_k)
+            wk = wk_times_lambda_k / jnp.linalg.norm(wk_times_lambda_k).clip(min=1e-10)
             rotation_vectors.append(wk)
 
         # Use rotation vectors as columns of the optimal rotation matrix
@@ -541,7 +541,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         states = self.env.get_states()
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
-        approx_eigvec = approx_eigvec / norms
+        approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
         
         # Select rotation function
         rotation_function = self.rotate_eigenvectors
@@ -554,7 +554,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         optimal_approx_eigvec = rotation_function(
             real_eigvec, approx_eigvec)
         norms = jnp.linalg.norm(optimal_approx_eigvec, axis=0, keepdims=True)
-        optimal_approx_eigvec = optimal_approx_eigvec / norms   # We normalize, since the cosine similarity is invariant to scaling
+        optimal_approx_eigvec = optimal_approx_eigvec / norms.clip(min=1e-10)   # We normalize, since the cosine similarity is invariant to scaling
         
         # Compute cosine similarity
         similarities = []

@@ -4,3 +4,4 @@ from src.trainer.generalized_gdo import GeneralizedGraphDrawingObjectiveTrainer
 from src.trainer.generalized_augmented import GeneralizedAugmentedLagrangianTrainer
 from src.trainer.augmented import AugmentedLagrangianTrainer
 from src.trainer.quadratic_penalty_ggdo import QuadraticPenaltyGGDOTrainer
+from src.trainer.augmented_wzd import AugmentedLagrangianWZDTrainer

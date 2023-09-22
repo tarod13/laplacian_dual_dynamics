@@ -15,6 +15,7 @@ from src.trainer import (
     GeneralizedAugmentedLagrangianTrainer,
     AugmentedLagrangianTrainer,
     QuadraticPenaltyGGDOTrainer,
+    AugmentedLagrangianWZDTrainer,
 )
 from src.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
@@ -72,6 +73,8 @@ def main(hyperparams):
         Trainer = GeneralizedAugmentedLagrangianTrainer
     elif algorithm == 'al-gdo':
         Trainer = AugmentedLagrangianTrainer
+    elif algorithm == 'alwzd-gdo':
+        Trainer = AugmentedLagrangianWZDTrainer
     elif algorithm == 'qp-ggdo':
         Trainer = QuadraticPenaltyGGDOTrainer
     else:
