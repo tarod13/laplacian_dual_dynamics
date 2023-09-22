@@ -5,3 +5,4 @@ from src.trainer.generalized_augmented import GeneralizedAugmentedLagrangianTrai
 from src.trainer.augmented import AugmentedLagrangianTrainer
 from src.trainer.quadratic_penalty_ggdo import QuadraticPenaltyGGDOTrainer
 from src.trainer.augmented_wzd import AugmentedLagrangianWZDTrainer
+from src.trainer.augmented_sczd import AugmentedLagrangianSCZDTrainer
