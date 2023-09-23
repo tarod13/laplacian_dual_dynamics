@@ -2,7 +2,7 @@ from src.trainer.trainer import Trainer
 from src.trainer.laplacian_encoder import LaplacianEncoderTrainer 
 from src.trainer.generalized_gdo import GeneralizedGraphDrawingObjectiveTrainer
 from src.trainer.generalized_augmented import GeneralizedAugmentedLagrangianTrainer
-from src.trainer.augmented import AugmentedLagrangianTrainer
+from src.trainer.al import AugmentedLagrangianTrainer
 from src.trainer.quadratic_penalty_ggdo import QuadraticPenaltyGGDOTrainer
-from src.trainer.augmented_wzd import AugmentedLagrangianWZDTrainer
-from src.trainer.augmented_sczd import AugmentedLagrangianSCZDTrainer
+from src.trainer.sqp import StopGradientQuadraticPenaltyTrainer as SQPTrainer
+from src.trainer.cqp import CoefficientSymmetryBreakingQuadraticPenaltyTrainer as CQPTrainer

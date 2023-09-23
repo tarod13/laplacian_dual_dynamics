@@ -122,8 +122,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 metrics_dict['wall_clock_time'] = timer.time_cost()
                 
                 self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
-                self.train_info['loss_pos'] = np.array([jax.device_get(losses[1])])[0]
-                self.train_info['loss_neg'] = np.array([jax.device_get(losses[2])])[0]
+                self.train_info['graph_loss'] = np.array([jax.device_get(losses[1])])[0]
+                self.train_info['dual_loss'] = np.array([jax.device_get(losses[2])])[0]
+                self.train_info['barrier_loss'] = np.array([jax.device_get(losses[3])])[0]
                 self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
                 self.train_info['max_cos_sim'] = np.array([jax.device_get(maximal_cosine_similarity)])[0]
 

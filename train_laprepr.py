@@ -12,11 +12,9 @@ from src.tools import timer_tools
 
 from src.trainer import (
     GeneralizedGraphDrawingObjectiveTrainer,
-    GeneralizedAugmentedLagrangianTrainer,
     AugmentedLagrangianTrainer,
-    QuadraticPenaltyGGDOTrainer,
-    AugmentedLagrangianWZDTrainer,
-    AugmentedLagrangianSCZDTrainer,
+    SQPTrainer,
+    CQPTrainer,
 )
 from src.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
@@ -70,16 +68,12 @@ def main(hyperparams):
 
     if algorithm == 'ggdo':
         Trainer = GeneralizedGraphDrawingObjectiveTrainer
-    elif algorithm == 'gal-gdo':
-        Trainer = GeneralizedAugmentedLagrangianTrainer
-    elif algorithm == 'al-gdo':
+    elif algorithm == 'al':
         Trainer = AugmentedLagrangianTrainer
-    elif algorithm == 'alwzd-gdo':
-        Trainer = AugmentedLagrangianWZDTrainer
-    elif algorithm == 'qp-ggdo':
-        Trainer = QuadraticPenaltyGGDOTrainer
-    elif algorithm == 'alsczd-gdo':
-        Trainer = AugmentedLagrangianSCZDTrainer
+    elif algorithm == 'sqp':
+        Trainer = SQPTrainer
+    elif algorithm == 'cqp':
+        Trainer = CQPTrainer
     else:
         raise ValueError(f'Algorithm {algorithm} is not supported.')
 
