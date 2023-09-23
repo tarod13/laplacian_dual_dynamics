@@ -11,7 +11,7 @@
 envs=("GridMaze-19" "GridRoom-16" "GridRoom-1" "GridRoom-64" "GridRoom-4" "GridRoomSym-4" "GridMaze-7" "GridMaze-17" "GridMaze-9" "GridMaze-32" "GridMaze-26" "GridRoom-32")
 bs=(20.0 10.0 5.0 2.0 1.0 0.5 0.2 0.1 0.05 0.02 0.01)
 lrs=(0.0 0.001 0.01 0.1 1.0)
-configs=("cql.yaml" "sql.yaml" "al.yaml")
+configs=("cqp.yaml" "sqp.yaml" "al.yaml")
 
 N_ENV=$((${SLURM_ARRAY_TASK_ID} / 165))
 R_B=$((${SLURM_ARRAY_TASK_ID} % 165))
