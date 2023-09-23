@@ -3,9 +3,8 @@ n_samples: 200000
 batch_size: 1024
 discount: 0.9
 log_dir: '/tmp/rl_laprepr/log'
-total_train_steps: 40000
+total_train_steps: 50000
 print_freq: 1000
-save_freq: 10000
 max_episode_steps: 50
 seed: 1234
 env_name: GridRoom-16
@@ -20,8 +19,8 @@ activation: relu
 eigval_precision_order: 16
 direct_rotation: True
 save_eig: True
-save_model: False
-save_model_every: 100000
+save_model: True
+save_model_every: 50000
 algorithm: sqp
 error_update_rate: 1
 q_error_update_rate: 0.1

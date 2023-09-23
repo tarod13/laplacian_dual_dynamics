@@ -2,6 +2,7 @@ import os
 import yaml
 from argparse import ArgumentParser
 import random
+import subprocess
 import numpy as np
 
 import jax
@@ -25,9 +26,11 @@ import wandb
 
 os.environ['WANDB_API_KEY']='83c25550226f8a86fdd4874026d2c0804cd3dc05'
 os.environ['WANDB_ENTITY']='tarod13'
-# os.environ['WANDB_MODE']='offline'
 
 def main(hyperparams):
+    if hyperparams.wandb_offline:
+        os.environ['WANDB_MODE']='offline'
+
     # Load YAML hyperparameters
     with open(f'./src/hyperparam/{hyperparams.config_file}', 'r') as f:
         hparam_yaml = yaml.safe_load(f)   # TODO: Check necessity of hyperparams
@@ -57,9 +60,14 @@ def main(hyperparams):
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
 
     if hparam_yaml['use_wandb']:
+        # Set wandb save directory
+        save_dir = os.getcwd()
+        os.makedirs(save_dir, exist_ok=True)
+
+        # Initialize wandb logger
         logger = wandb.init(
             project='laplacian-encoder', 
-            dir=hyperparams.save_dir,
+            dir=save_dir,
             config=hparam_yaml,
         )   
         # wandb_logger.watch(laplacian_encoder)   # TODO: Test overhead
@@ -87,6 +95,17 @@ def main(hyperparams):
     )
     trainer.train()
 
+    if hyperparams.wandb_offline:
+        os.environ['WANDB_MODE']='online'
+        trainer.logger.finish()        
+
+        bash_command = f"wandb sync {os.path.dirname(logger.dir)}"
+        subprocess.call(bash_command, shell=True)
+
+        # Delete wandb directory
+        bash_command = f"rm -rf {os.path.dirname(logger.dir)}"
+        subprocess.call(bash_command, shell=True)
+        
     # Print training time
     print('Total time cost: {:.4g}s.'.format(timer.time_cost()))
 
@@ -104,6 +123,12 @@ if __name__ == '__main__':
         "--use_wandb", 
         action="store_true",
         help="Raise the flag to use wandb."
+    )
+
+    parser.add_argument(
+        "--wandb_offline", 
+        action="store_true",
+        help="Raise the flag to use wandb offline."
     )
 
     parser.add_argument(
