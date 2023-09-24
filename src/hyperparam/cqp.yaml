@@ -19,7 +19,7 @@ activation: relu
 eigval_precision_order: 16
 direct_rotation: True
 save_eig: True
-save_model: True
+save_model: False
 save_model_every: 50000
 algorithm: cqp
 error_update_rate: 1
