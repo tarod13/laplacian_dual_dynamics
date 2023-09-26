@@ -139,16 +139,19 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                     # Log metrics
                     self.logger.log(metrics_dict)
 
+            is_last_step = (step + 1) == self.total_train_steps
+            if is_last_step:
+                self.plot_eigenvectors(params['encoder'])
+
             is_save_step = (
                 self.save_model 
                 and (
                     (((step + 1) % self.save_model_every) == 0)
-                    or ((step + 1) == self.total_train_steps)
+                    or is_last_step
                 )
             )
             if is_save_step:
                 self._save_model(params, opt_state, cosine_similarity)
-                self.plot_eigenvectors(params['encoder'])
                     
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
