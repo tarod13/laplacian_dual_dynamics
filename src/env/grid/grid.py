@@ -342,10 +342,10 @@ class GridEnv(gym.Env):
         eigvecs = eigvecs / np.linalg.norm(eigvecs, axis=0, keepdims=True)
 
         # Obtain sign of first non-zero element of eigenvectors
-        first_non_zero_id = np.argmax(eigvecs != 0, axis=1)
+        first_non_zero_id = np.argmax(eigvecs != 0, axis=0)
         
         # Choose directions of eigenvectors
-        signs = np.sign(eigvecs[np.arange(eigvecs.shape[0]), first_non_zero_id])
+        signs = np.sign(eigvecs[np.arange(eigvecs.shape[1]), first_non_zero_id])
         eigvecs = eigvecs * signs.reshape(1,-1)
 
         # Check if symmetric

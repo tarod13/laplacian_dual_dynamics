@@ -20,7 +20,14 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["S-T1", "--use_wandb", "--config_file", "cqp.yaml", "--env_name", "GridRoom-16", "--lr_barrier_coefs", "0.001"],
+            "args": [
+                "S-T1", "--use_wandb", "--save_model",
+                "--config_file", "cqp.yaml", 
+                "--env_name", "GridRoom-16",
+                "--barrier_initial_val", "0.2", 
+                "--lr_barrier_coefs", "0",
+                "--total_train_steps", "10000",
+            ],
         }, 
         {
             "name": "Quadratic penalty + stop gradients: AL with zero duals and monotonically increasing barrier",

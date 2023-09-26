@@ -24,6 +24,9 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
+import matplotlib.pyplot as plt
+from scipy.interpolate import Rbf
+
 
 Data = namedtuple("Data", "s1 s2 s_neg_1 s_neg_2")   # TODO: Change notation
 
@@ -136,9 +139,16 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                     # Log metrics
                     self.logger.log(metrics_dict)
 
-            is_save_step = self.save_model and (((step + 1) % self.save_model_every) == 0)
+            is_save_step = (
+                self.save_model 
+                and (
+                    (((step + 1) % self.save_model_every) == 0)
+                    or ((step + 1) == self.total_train_steps)
+                )
+            )
             if is_save_step:
                 self._save_model(params, opt_state, cosine_similarity)
+                self.plot_eigenvectors(params['encoder'])
                     
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
@@ -572,6 +582,82 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         cosine_similarity = similarities.mean()
 
         return cosine_similarity, similarities
+    
+    def plot_eigenvectors(self, params_encoder):
+        """Plot each of the eigenvectors."""
+        
+        # Get approximated eigenvectors
+        states = self.env.get_states()
+        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
+        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
+        approx_eigvec = approx_eigvec / norms.clip(min=1e-10)   
+
+        # Obtain sign of first non-zero element of eigenvectors
+        first_non_zero_id = jnp.argmax(approx_eigvec != 0, axis=0)
+        
+        # Choose directions of eigenvectors
+        signs = jnp.sign(approx_eigvec[jnp.arange(approx_eigvec.shape[1]), first_non_zero_id])
+        approx_eigvec = approx_eigvec * signs.reshape(1,-1)
+
+        grid = self.env.grid.astype(bool)
+        vmin = jnp.min(approx_eigvec)
+        vmax = jnp.max(approx_eigvec)
+
+        # Plot approximated eigenvectors
+        for i in range(self.d):
+            eigenvector = approx_eigvec[:,i]
+            self.plot_single_eigenvector(states, i, eigenvector, grid, vmin, vmax)
+
+        print('Eigenvectors plotted.')
+    
+    def plot_single_eigenvector(self, states, eigenvector_id, eigenvector, grid, vmin, vmax):
+        """Plot each of the eigenvectors."""
+        
+        # Obtain x, y, z coordinates, where z is the visitation count
+        y = states[:,0]
+        x = states[:,1]
+        z = eigenvector
+                    
+        # Calculate tile size
+        x_num_tiles = np.unique(x).shape[0]
+        x_tile_size = (np.max(x) - np.min(x)) / x_num_tiles
+        y_num_tiles = np.unique(y).shape[0]
+        y_tile_size = (np.max(y) - np.min(y)) / y_num_tiles
+
+        # Create grid for interpolation
+        ti_x = np.linspace(x.min()-x_tile_size, x.max()+x_tile_size, x_num_tiles+2)
+        ti_y = np.linspace(y.min()-y_tile_size, y.max()+y_tile_size, y_num_tiles+2)
+        XI, YI = np.meshgrid(ti_x, ti_y)
+
+        # Interpolate
+        rbf = Rbf(x, y, z, function='cubic')
+        ZI = rbf(XI, YI)
+        ZI_bounds = 85 * np.ma.masked_where(grid, np.ones_like(ZI))
+        ZI_free = np.ma.masked_where(~grid, ZI)
+        
+        # Generate color mesh
+        fig, ax = plt.subplots(1,1, figsize=(10,10))
+        mesh = ax.pcolormesh(XI, YI, ZI_free, shading='auto', cmap='coolwarm', vmin=vmin, vmax=vmax)
+        ax.pcolormesh(XI, YI, ZI_bounds, shading='auto', cmap='Greys', vmin=0, vmax=255)
+        ax.set_aspect('equal')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.colorbar(mesh, ax=ax, shrink=0.5, pad=0.05)
+
+        # Save figure
+        fig_path = f'./results/visuals/{self.env_name}/learned_eigenvector_{eigenvector_id}_{self.logger.id}.pdf'
+
+        if not os.path.exists(os.path.dirname(fig_path)):
+            os.makedirs(os.path.dirname(fig_path))
+
+        plt.savefig(
+            fig_path, 
+            bbox_inches='tight', 
+            dpi=300, 
+            transparent=True, 
+        )
 
     @abstractmethod
     def init_additional_params(self, *args, **kwargs):

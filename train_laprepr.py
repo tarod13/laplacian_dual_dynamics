@@ -132,6 +132,12 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        "--save_model", 
+        action="store_true",
+        help="Raise the flag to save the model."
+    )
+
+    parser.add_argument(
         '--config_file', 
         type=str, 
         default= 'barrier.yaml',
