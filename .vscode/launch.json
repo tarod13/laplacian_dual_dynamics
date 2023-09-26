@@ -21,10 +21,10 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "S-T1", "--use_wandb", "--save_model",
+                "S-T1", "--use_wandb",
                 "--config_file", "cqp.yaml", 
                 "--env_name", "GridRoom-16",
-                "--barrier_initial_val", "0.2", 
+                "--barrier_initial_val", "0.5", 
                 "--lr_barrier_coefs", "0",
                 "--total_train_steps", "10000",
             ],
