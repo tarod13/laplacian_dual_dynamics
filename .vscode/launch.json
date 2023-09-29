@@ -48,7 +48,7 @@
             "args": [
                 "S-T1", "--use_wandb", "--wandb_offline",
                 "--config_file", "al.yaml", 
-                "--env_name", "GridRoom-16", 
+                "--env_name", "GridMaze-19", 
                 "--lr_barrier_coefs", "0.001", 
                 "--save_dir", "./wandb",
             ],
