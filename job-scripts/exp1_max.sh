@@ -6,7 +6,7 @@
 #SBATCH --mail-user=gomeznor@ualberta.ca
 #SBATCH --mail-type=ALL
 
-#SBATCH --array=0-18251
+#SBATCH --array=0-3041
 
 envs=("GridMaze-11" "GridRoom-64" "GridRoom-4" "GridRoomSym-4" "GridMaze-7" "GridMaze-17" "GridMaze-9" "GridMaze-32" "GridMaze-26" "GridRoom-32" "GridMaze-19" "GridRoom-16" "GridRoom-1")
 bs=(100.0 50.0 20.0 10.0 5.0 2.0 1.0 0.5 0.2 0.1 0.05 0.02 0.01)
