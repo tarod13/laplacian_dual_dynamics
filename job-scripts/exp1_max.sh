@@ -25,6 +25,7 @@ N_CONFIG=$((${R_LR} % 3))
 SEEDS="./src/hyperparam/seed_list_minimal_${N_SEED}.txt"
 CONFIG=${configs[$N_CONFIG]}
 PROJECT_FOLDER="/project/def-mbowling/diegog/laplacian_dual_dynamics/"
+SAVE_FOLDER="scratch/wandb/"
 ENV=${envs[$N_ENV]}
 B=${bs[$N_B]}
 LR=${lrs[$N_LR]}
@@ -32,4 +33,4 @@ LR=${lrs[$N_LR]}
 cd ~/projects/def-mbowling/diegog/laplacian_dual_dynamics/
 module load apptainer
 
-parallel apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B $PROJECT_FOLDER --pwd /pwd ~/apptainer/lk_haiku_n.sif python3 train_laprepr.py "EXP1-X" --use_wandb --wandb_offline --config_file $CONFIG --env_name {3} --seed {1} --barrier_initial_val {2} --lr_barrier_coefs {4} --n_samples 3000000 --total_train_steps 400000 :::: $SEEDS ::: $B ::: $ENV ::: $LR
+parallel apptainer exec --nv -B /home -B $PWD:/pwd -B /project -B /scratch -B /localscratch -B $PROJECT_FOLDER --pwd /pwd ~/apptainer/lk_haiku_n.sif python3 train_laprepr.py "EXP1-X" --use_wandb --wandb_offline --config_file $CONFIG --save_dir $SAVE_FOLDER --env_name {3} --seed {1} --barrier_initial_val {2} --lr_barrier_coefs {4} --n_samples 3000000 --total_train_steps 400000 :::: $SEEDS ::: $B ::: $ENV ::: $LR

@@ -61,15 +61,17 @@ def main(hyperparams):
 
     if hparam_yaml['use_wandb']:
         # Set wandb save directory
-        # save_dir = os.getcwd()
-        # os.makedirs(save_dir, exist_ok=True)
+        if hparam_yaml['save_dir'] is None:
+            save_dir = os.getcwd()
+            os.makedirs(save_dir, exist_ok=True)
+            hparam_yaml['save_dir'] = save_dir
 
         # Initialize wandb logger
         logger = wandb.init(
             project='laplacian-encoder', 
-            # dir=save_dir,
+            dir=hparam_yaml['save_dir'],
             config=hparam_yaml,
-        )   
+        )
         # wandb_logger.watch(laplacian_encoder)   # TODO: Test overhead
     else:
         logger = None
