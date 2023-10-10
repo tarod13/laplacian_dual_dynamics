@@ -134,7 +134,7 @@ log/*
 *.png
 *.pkl
 
-rl_lap/data/*
+src/data/*
 wandb
 results
-rl_lap/env/grid/eigval
+src/env/grid/eigval

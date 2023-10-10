@@ -2,35 +2,37 @@ import os
 import yaml
 from argparse import ArgumentParser
 import random
+import subprocess
 import numpy as np
 
 import jax
 import jax.numpy as jnp
 import optax
 
-from rl_lap.tools import timer_tools
+from src.tools import timer_tools
 
-from rl_lap.trainer import (
-    CALaplacianEncoderTrainerM,
-    DRSSLaplacianEncoderTrainer,
-    DualLaplacianEncoderTrainer,
-    ExactDualLaplacianEncoderTrainer,
-    ScalarBarrierDualLaplacianEncoderTrainer,
-)   # TODO: Add this class to rl_lap\trainer\__init__.py
-from rl_lap.agent.episodic_replay_buffer import EpisodicReplayBuffer
+from src.trainer import (
+    GeneralizedGraphDrawingObjectiveTrainer,
+    AugmentedLagrangianTrainer,
+    SQPTrainer,
+    CQPTrainer,
+)
+from src.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
-from rl_lap.nets import (
+from src.nets import (
     MLP, generate_hk_module_fn,
 )
 import wandb
 
 os.environ['WANDB_API_KEY']='83c25550226f8a86fdd4874026d2c0804cd3dc05'
 os.environ['WANDB_ENTITY']='tarod13'
-# os.environ['WANDB_MODE']='offline'
 
 def main(hyperparams):
+    if hyperparams.wandb_offline:
+        os.environ['WANDB_MODE']='offline'
+
     # Load YAML hyperparameters
-    with open(f'./rl_lap/hyperparam/{hyperparams.config_file}', 'r') as f:
+    with open(f'./src/hyperparam/{hyperparams.config_file}', 'r') as f:
         hparam_yaml = yaml.safe_load(f)   # TODO: Check necessity of hyperparams
 
     # Replace hparams with command line arguments
@@ -48,66 +50,45 @@ def main(hyperparams):
     # Create trainer
     d = hparam_yaml['d']
     algorithm = hparam_yaml['algorithm']
-    nn_library = hparam_yaml['nn_library']
     rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
     hidden_dims = hparam_yaml['hidden_dims']
 
-    if (nn_library != 'haiku-v2') and (algorithm == 'dual-rs'):
-        raise ValueError(f'Algorithm {algorithm} is not supported with neural network library {nn_library} yet.')
-
     encoder_fn = generate_hk_module_fn(MLP, d, hidden_dims, hparam_yaml['activation'])
-    additional_params = {}
-    
-    if algorithm in ['dual', 'dual-rs', 'dual-exact', 'dual-b1']:
-        if 'regularization_weight' in hparam_yaml:
-            hparam_yaml['barrier_initial_val'] = hparam_yaml['regularization_weight']
-
-        # Initialize dual parameters as lower triangular matrix with ones
-        dual_initial_val = hparam_yaml['dual_initial_val']
-        additional_params['duals'] = jnp.tril(dual_initial_val * jnp.ones((d, d)), k=0)
-        additional_params['dual_velocities'] = jnp.zeros_like(additional_params['duals'])
-
-        # Initialize state dict with error and accumulated error matrices
-        additional_params['errors'] = jnp.zeros((d, d))
-        
-        if algorithm in ['dual-exact']:
-            barrier_initial_val = hparam_yaml['barrier_initial_val']
-            additional_params['barrier_coefs'] = jnp.tril(barrier_initial_val * jnp.ones((d, d)), k=0)
-            additional_params['squared_errors'] = jnp.zeros((d, d))
-        elif algorithm in ['dual-b1']:
-            barrier_initial_val = hparam_yaml['barrier_initial_val']
-            additional_params['barrier_coefs'] = jnp.tril(barrier_initial_val * jnp.ones((1, 1)), k=0)
-            additional_params['squared_errors'] = jnp.zeros((1, 1))
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
+    
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
 
     if hparam_yaml['use_wandb']:
+        # Set wandb save directory
+        if hparam_yaml['save_dir'] is None:
+            save_dir = os.getcwd()
+            os.makedirs(save_dir, exist_ok=True)
+            hparam_yaml['save_dir'] = save_dir
+
+        # Initialize wandb logger
         logger = wandb.init(
             project='laplacian-encoder', 
-            dir=hyperparams.save_dir,
+            dir=hparam_yaml['save_dir'],
             config=hparam_yaml,
-        )   
+        )
         # wandb_logger.watch(laplacian_encoder)   # TODO: Test overhead
     else:
         logger = None
 
-    if algorithm == 'coef-a':
-        Trainer = CALaplacianEncoderTrainerM
-    elif algorithm == 'dual-rs':
-        Trainer = DRSSLaplacianEncoderTrainer
-    elif algorithm == 'dual':
-        Trainer = DualLaplacianEncoderTrainer
-    elif algorithm == 'dual-exact':
-        Trainer = ExactDualLaplacianEncoderTrainer
-    elif algorithm == 'dual-b1':
-        Trainer = ScalarBarrierDualLaplacianEncoderTrainer
+    if algorithm == 'ggdo':
+        Trainer = GeneralizedGraphDrawingObjectiveTrainer
+    elif algorithm == 'al':
+        Trainer = AugmentedLagrangianTrainer
+    elif algorithm == 'sqp':
+        Trainer = SQPTrainer
+    elif algorithm == 'cqp':
+        Trainer = CQPTrainer
     else:
         raise ValueError(f'Algorithm {algorithm} is not supported.')
 
     trainer = Trainer(
         encoder_fn=encoder_fn,
-        additional_params=additional_params,
         optimizer=optimizer,
         replay_buffer=replay_buffer,
         logger=logger,
@@ -116,6 +97,17 @@ def main(hyperparams):
     )
     trainer.train()
 
+    if hyperparams.wandb_offline:
+        os.environ['WANDB_MODE']='online'
+        trainer.logger.finish()        
+
+        bash_command = f"wandb sync {os.path.dirname(logger.dir)}"
+        subprocess.call(bash_command, shell=True)
+
+        # Delete wandb directory
+        bash_command = f"rm -rf {os.path.dirname(logger.dir)}"
+        subprocess.call(bash_command, shell=True)
+        
     # Print training time
     print('Total time cost: {:.4g}s.'.format(timer.time_cost()))
 
@@ -130,9 +122,27 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        "--use_wandb", 
+        action="store_true",
+        help="Raise the flag to use wandb."
+    )
+
+    parser.add_argument(
+        "--wandb_offline", 
+        action="store_true",
+        help="Raise the flag to use wandb offline."
+    )
+
+    parser.add_argument(
+        "--save_model", 
+        action="store_true",
+        help="Raise the flag to save the model."
+    )
+
+    parser.add_argument(
         '--config_file', 
         type=str, 
-        default= 'dual_b1.yaml', # 'dual_b1.yaml', #'dual.yaml', #'dual_exact.yaml', #'coefficient_augmented_martin.yaml', # 'dual_relaxed_squared.yaml'
+        default= 'barrier.yaml',
         help='Configuration file to use.'
     )
     parser.add_argument(
@@ -196,10 +206,16 @@ if __name__ == '__main__':
         help='Hidden dimensions of the laplacian encoder.'
     )
     parser.add_argument(
-        '--regularization_weight', 
+        '--barrier_initial_val', 
         type=float, 
         default=None, 
-        help='Regularization weight.'
+        help='Initial value for barrier coefficient in the quadratic penalty.'
+    )
+    parser.add_argument(
+        '--lr_barrier_coefs', 
+        type=float, 
+        default=None, 
+        help='Learning rate of the barrier coefficient in the quadratic penalty.'
     )
     
     hyperparams = parser.parse_args()

@@ -1,0 +1,32 @@
+d: 11
+n_samples: 200000
+batch_size: 1024
+discount: 0.9
+log_dir: '/tmp/rl_laprepr/log'
+total_train_steps: 50000
+print_freq: 1000
+max_episode_steps: 50
+seed: 1234
+env_name: GridRoom-16
+env_family: Grid-v0
+lr: 0.001
+use_wandb: True
+hidden_dims:
+  - 256
+  - 256
+  - 256
+activation: relu
+eigval_precision_order: 16
+direct_rotation: True
+save_eig: True
+save_model: False
+save_model_every: 50000
+algorithm: sqp
+error_update_rate: 1
+q_error_update_rate: 0.1
+normalize_graph_loss: False
+barrier_initial_val: 1.0
+lr_barrier_coefs: 1.0
+min_barrier_coefs: 0
+max_barrier_coefs: 10000
+use_barrier_normalization: False

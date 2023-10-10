@@ -1,0 +1,57 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Generalized GDO: GDO + monotonically decreasing coefficients",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["S-T1", "--use_wandb", "--config_file", "generalized_gdo.yaml", "--env_name", "GridMaze-7"],
+        }, 
+        {
+            "name": "Quadratic penalty GGDO: GGDO + monotonically increase the barrier parameter",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "S-T1", "--use_wandb",
+                "--config_file", "cqp.yaml", 
+                "--env_name", "GridRoom-16",
+                "--barrier_initial_val", "0.5", 
+                "--lr_barrier_coefs", "0",
+                "--total_train_steps", "10000",
+            ],
+        }, 
+        {
+            "name": "Quadratic penalty + stop gradients: AL with zero duals and monotonically increasing barrier",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["S-T1", "--use_wandb", "--config_file", "sqp.yaml", "--env_name", "GridRoom-16", "--lr_barrier_coefs", "0.001"],
+        }, 
+        {
+            "name": "Augmented Lagrangian + stop gradients: learn duals and monotonically increase the barrier parameter",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "S-T1", "--use_wandb", "--wandb_offline",
+                "--config_file", "al.yaml", 
+                "--env_name", "GridMaze-19", 
+                "--lr_barrier_coefs", "0.001", 
+                "--save_dir", "./wandb",
+            ],
+        }
+    ]
+}
