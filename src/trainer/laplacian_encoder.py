@@ -140,7 +140,11 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                     self.logger.log(metrics_dict)
 
             is_last_step = (step + 1) == self.total_train_steps
-            if is_last_step:
+            is_plot_step = (
+                self.do_plot_eigenvectors
+                and is_last_step
+            )
+            if is_plot_step:
                 self.plot_eigenvectors(params['encoder'])
 
             is_save_step = (

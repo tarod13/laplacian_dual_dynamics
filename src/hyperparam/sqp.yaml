@@ -21,6 +21,7 @@ direct_rotation: True
 save_eig: True
 save_model: False
 save_model_every: 50000
+do_plot_eigenvectors: False
 algorithm: sqp
 error_update_rate: 1
 q_error_update_rate: 0.1

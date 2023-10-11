@@ -22,6 +22,7 @@ direct_rotation: True
 save_eig: True
 save_model: False
 save_model_every: 100000
+do_plot_eigenvectors: False
 algorithm: qp-ggdo
 asymmetric_normalization: False
 coefficient_normalization: True
