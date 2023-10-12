@@ -14,6 +14,7 @@ import src.env
 from src.env.wrapper.norm_obs import NormObs
 from src.agent.agent import BehaviorAgent as Agent
 from src.policy import DiscreteUniformRandomPolicy as Policy
+from src.env.grid.utils import load_eig
 
 from ..tools import timer_tools
 from ..tools import summary_tools
@@ -226,21 +227,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     def build_environment(self):
         # Load eigenvectors and eigenvalues of the transition dynamics matrix (if they exist)
         path_eig = f'./src/env/grid/eigval/{self.env_name}.npz'
-        if not os.path.exists(path_eig):
-            eig = None
-            eig_not_found = True
-        else:
-            with open(path_eig, 'rb') as f:
-                eig = np.load(f)
-                eigval, eigvec = eig['eigval'], eig['eigvec']
-
-                # Sort eigenvalues and eigenvectors
-                idx = np.flip((eigval).argsort())   # TODO: consider negative eigenvalues
-                eigval = eigval[idx]
-                eigvec = eigvec[:,idx]
-
-                eig = (eigval, eigvec)
-            eig_not_found = False
+        eig, eig_not_found = load_eig(path_eig)
 
         # Create environment
         path_txt_grid = f'./src/env/grid/txts/{self.env_name}.txt'
@@ -255,7 +242,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         obs_wrapper = lambda e: NormObs(e)
         env = obs_wrapper(env)
         # Wrap environment with time limit
-        time_wrapper = lambda e: TimeLimit(e, max_episode_steps=self.max_episode_steps)
+        time_wrapper = lambda e: TimeLimit(
+            e, max_episode_steps=self.max_episode_steps)
         env = time_wrapper(env)
 
         # Set seed

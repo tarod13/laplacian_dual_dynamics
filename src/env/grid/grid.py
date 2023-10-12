@@ -26,30 +26,59 @@ class GridEnv(gym.Env):
     Grid environment 
     '''
     metadata = {
-        "render_modes": ["human", "rgb_array"], "render_fps": 100000}
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 100000,
+        "obs_modes": ["xy", "pixels", "both"],
+    }
 
     def __init__(
-            self, 
-            path, 
-            render_mode=None, 
+            self,
+            path,
+            render_mode: str = None, 
             use_target: bool = True,
             eig: Optional[Tuple] = None,
             render_fps=None,
+            obs_mode: str = None,
         ):
         self.grid = txt_to_grid(path)
         self.height = self.grid.shape[0]
         self.width = self.grid.shape[1]
         self.window_size = 512   # Size of the PyGame window
         self.use_target = use_target
+
         if not render_fps is None:
             self.metadata["render_fps"] = render_fps
 
+        # Set the render mode
+        if render_mode is None:
+            render_mode ="rgb_array"
+        assert render_mode in self.metadata["render_modes"], (
+            f"render_mode must be one of {self.metadata['render_modes']}, but is {render_mode}"
+        )
+        self.render_mode = render_mode
+
+        # Set the observation mode
+        if obs_mode is None:
+            obs_mode = "xy"
+        assert obs_mode in self.metadata["obs_modes"], (
+            f"obs_mode must be one of {self.metadata['obs_modes']}, but is {obs_mode}"
+        )
+        self.obs_mode = obs_mode
+
         # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
-        self.observation_space = spaces.Dict(   # TODO: use MultiDiscrete instead of Box
-            {"agent": spaces.MultiDiscrete([self.height, self.width]),})
-        if self.use_target:
-            self.observation_space["target"] = spaces.MultiDiscrete([self.height, self.width])
+        # Each location is encoded as an element of {0, ..., height}x{0, ..., width}, 
+        # i.e. MultiDiscrete([height, width]).
+        obs_dict = {}
+        if self.obs_mode in ["xy", "both"]:
+            obs_dict["xy_agent"] = spaces.MultiDiscrete([self.height, self.width])
+            if self.use_target:
+                obs_dict["xy_target"] = spaces.MultiDiscrete([self.height, self.width])
+        
+        if self.obs_mode in ["pixels", "both"]:
+            obs_dict["pixels"] = spaces.Box(
+                low=0, high=255, shape=(self.height, self.width, 3), dtype=np.uint8)
+
+        self.observation_space = spaces.Dict(obs_dict)
 
         # We have 4 actions, corresponding to "right", "up", "left", "down"
         self.action_space = spaces.Discrete(4)
@@ -66,9 +95,6 @@ class GridEnv(gym.Env):
             3: np.array([0, -1]),
         }
 
-        assert render_mode is None or render_mode in self.metadata["render_modes"]
-        self.render_mode = render_mode
-
         """
         If human-rendering is used, `self.window` will be a reference
         to the window that we draw to. `self.clock` will be a clock that is used
@@ -77,7 +103,7 @@ class GridEnv(gym.Env):
         first time.
         """
         self.window = None
-        self.clock = None
+        self.clock = None        
 
         # Create a state index dictionary
         self._states = np.argwhere(self.grid) #.astype(np.float32)
@@ -96,15 +122,20 @@ class GridEnv(gym.Env):
             self._eigval, _eigvec = eig
             self._eigvec = _eigvec.astype(np.float32)
 
-    def _get_obs(self):
-        # Get the agent's location after applying the transformations
-        obs = {"agent": self._agent_location}
+    def _get_obs(self) -> dict:
+        '''Return the current observation as a dictionary.'''
+        obs_dict = {}
+        if self.obs_mode in ["xy", "both"]:
+            obs_dict["xy_agent"] = self._agent_location
+            if self.use_target:
+                obs_dict["xy_target"] = self._target_location
         
-        # Add the target's location to the observation
-        if self.use_target:
-            obs["target"] = self._target_location
+        if self.obs_mode in ["pixels", "both"]:
+            self._canvas = self._create_canvas()
+            obs_dict["pixels"] = self._render_frame(
+                render_mode="rgb_array", canvas=self._canvas)         
 
-        return obs
+        return obs_dict
     
     def _get_info(self):
         info = {}
@@ -126,6 +157,7 @@ class GridEnv(gym.Env):
         # Choose the agent's location uniformly at random
         agent_location_id = self.np_random.integers(0, self.n_states, size=1, dtype=int)
         self._agent_location = self._states[agent_location_id].flatten()
+        self._canvas = None
         
         # We will sample the target's location randomly until it does not coincide with the agent's location
         if self.use_target:
@@ -138,7 +170,10 @@ class GridEnv(gym.Env):
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            self._render_frame(
+                render_mode=self.render_mode, 
+                canvas=self._canvas
+            )
 
         return observation, info
 
@@ -164,7 +199,10 @@ class GridEnv(gym.Env):
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            self._render_frame(
+                render_mode=self.render_mode, 
+                canvas=self._canvas
+            )
 
         truncated = False
 
@@ -172,16 +210,12 @@ class GridEnv(gym.Env):
 
     def render(self):
         if self.render_mode == "rgb_array":
-            return self._render_frame()
-
-    def _render_frame(self):   # TODO: consider non-square grids
-        if self.window is None and self.render_mode == "human":
-            pygame.init()
-            pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
-        if self.clock is None and self.render_mode == "human":
-            self.clock = pygame.time.Clock()
-
+            return self._render_frame(
+                render_mode=self.render_mode, 
+                canvas=self._canvas
+            )
+        
+    def _create_canvas(self):
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))
         pix_square_sizes = np.array([
@@ -239,7 +273,22 @@ class GridEnv(gym.Env):
                 width=3,
             )
 
-        if self.render_mode == "human":
+        return canvas
+
+    def _render_frame(self, render_mode, canvas=None):   # TODO: consider non-square grids
+        if render_mode == "human":
+            if self.window is None:
+                pygame.init()
+                pygame.display.init()
+                self.window = pygame.display.set_mode((self.window_size, self.window_size))
+
+            if self.clock is None:
+                self.clock = pygame.time.Clock()
+
+        if canvas is None:
+            canvas = self._create_canvas()
+
+        if render_mode == "human":
             # The following line copies our drawings from `canvas` to the visible window
             self.window.blit(canvas, canvas.get_rect())
             pygame.event.pump()
@@ -248,6 +297,7 @@ class GridEnv(gym.Env):
             # We need to ensure that human-rendering occurs at the predefined framerate.
             # The following line will automatically add a delay to keep the framerate stable.
             self.clock.tick(self.metadata["render_fps"])
+
         else:  # rgb_array
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)

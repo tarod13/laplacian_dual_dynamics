@@ -1,3 +1,4 @@
+import os
 from itertools import product
 import numpy as np
 
@@ -107,3 +108,21 @@ def obtain_grid_dynamics_from_path(path_txt_grid, policy=None):
     M = np.einsum('ijk,ij->ik', T, policy)   # Dynamics matrix (state, state')
     
     return M, T, state_map, grid
+
+def load_eig(path_eig):
+    if not os.path.exists(path_eig):
+        eig = None
+        eig_not_found = True
+    else:
+        with open(path_eig, 'rb') as f:
+            eig = np.load(f)
+            eigval, eigvec = eig['eigval'], eig['eigvec']
+
+            # Sort eigenvalues and eigenvectors
+            idx = np.flip((eigval).argsort())   # TODO: consider negative eigenvalues
+            eigval = eigval[idx]
+            eigvec = eigvec[:,idx]
+
+            eig = (eigval, eigvec)
+        eig_not_found = False
+    return eig, eig_not_found
