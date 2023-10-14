@@ -59,9 +59,9 @@ class ConvNet(hk.Module):
             jax.nn.relu,
             hk.Conv2D(output_channels=16, kernel_shape=4, stride=2, padding=(1,1),
                       w_init=hk.initializers.VarianceScaling(2.0, "fan_in",  "truncated_normal")),   
-            jax.nn.relu,
-            hk.Conv2D(output_channels=16, kernel_shape=4, stride=1, padding=(0,0),
-                      w_init=hk.initializers.VarianceScaling(2.0, "fan_in",  "truncated_normal")),   
+            # jax.nn.relu,
+            # hk.Conv2D(output_channels=16, kernel_shape=4, stride=1, padding=(0,0),
+            #           w_init=hk.initializers.VarianceScaling(2.0, "fan_in",  "truncated_normal")),   
         ])
         self.flatten = hk.Flatten()
         self.linear = hk.Sequential(

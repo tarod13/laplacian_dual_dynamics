@@ -4,7 +4,7 @@ batch_size: 1024
 discount: 0.9
 log_dir: '/tmp/rl_laprepr/log'
 total_train_steps: 50000
-print_freq: 100
+print_freq: 1000
 max_episode_steps: 50
 seed: 1234
 env_name: GridRoom-16
