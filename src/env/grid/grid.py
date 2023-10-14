@@ -28,7 +28,7 @@ class GridEnv(gym.Env):
     metadata = {
         "render_modes": ["human", "rgb_array"],
         "render_fps": 100000,
-        "obs_modes": ["xy", "pixels", "both"],
+        "obs_modes": ["xy", "pixels", "both", "grid", "both-grid"],
     }
 
     def __init__(
@@ -39,11 +39,13 @@ class GridEnv(gym.Env):
             eig: Optional[Tuple] = None,
             render_fps=None,
             obs_mode: str = None,
+            calculate_eig: bool = True,
+            window_size: int = 64,
         ):
         self.grid = txt_to_grid(path)
         self.height = self.grid.shape[0]
         self.width = self.grid.shape[1]
-        self.window_size = 512   # Size of the PyGame window
+        self.window_size = window_size   # Size of the PyGame window
         self.use_target = use_target
 
         if not render_fps is None:
@@ -65,17 +67,26 @@ class GridEnv(gym.Env):
         )
         self.obs_mode = obs_mode
 
+        # Create numpy array with empty grid
+        self.grid_array = 255 * self.grid[:,:,np.newaxis].repeat(3, axis=2)   # Create empty grid
+        self.grid_array += 110 * (1-self.grid[:,:,np.newaxis]).repeat(3, axis=2)   # Fill grid with walls
+        self.grid_array = self.grid_array.astype(np.uint8)
+
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., height}x{0, ..., width}, 
         # i.e. MultiDiscrete([height, width]).
         obs_dict = {}
-        if self.obs_mode in ["xy", "both"]:
+        if self.obs_mode in ["xy", "both", "both-grid"]:
             obs_dict["xy_agent"] = spaces.MultiDiscrete([self.height, self.width])
             if self.use_target:
                 obs_dict["xy_target"] = spaces.MultiDiscrete([self.height, self.width])
         
         if self.obs_mode in ["pixels", "both"]:
             obs_dict["pixels"] = spaces.Box(
+                low=0, high=255, shape=(self.window_size, self.window_size, 3), dtype=np.uint8)
+            
+        if self.obs_mode in ["grid", "both-grid"]:
+            obs_dict["grid"] = spaces.Box(
                 low=0, high=255, shape=(self.height, self.width, 3), dtype=np.uint8)
 
         self.observation_space = spaces.Dict(obs_dict)
@@ -117,7 +128,11 @@ class GridEnv(gym.Env):
 
         # Compute the eigenvectors and eigenvalues of the dynamics matrix
         if eig is None:
-            self._eigval, self._eigvec = self._compute_eigenvectors()
+            if calculate_eig:
+                self._eigval, self._eigvec = self._compute_eigenvectors()
+            else:
+                self._eigval = None
+                self._eigvec = None
         else:
             self._eigval, _eigvec = eig
             self._eigvec = _eigvec.astype(np.float32)
@@ -125,7 +140,7 @@ class GridEnv(gym.Env):
     def _get_obs(self) -> dict:
         '''Return the current observation as a dictionary.'''
         obs_dict = {}
-        if self.obs_mode in ["xy", "both"]:
+        if self.obs_mode in ["xy", "both", "both-grid"]:
             obs_dict["xy_agent"] = self._agent_location
             if self.use_target:
                 obs_dict["xy_target"] = self._target_location
@@ -133,7 +148,11 @@ class GridEnv(gym.Env):
         if self.obs_mode in ["pixels", "both"]:
             self._canvas = self._create_canvas()
             obs_dict["pixels"] = self._render_frame(
-                render_mode="rgb_array", canvas=self._canvas)         
+                render_mode="rgb_array", canvas=self._canvas).astype(np.uint8).clip(0,255)    
+
+        if self.obs_mode in ["grid", "both-grid"]:
+            grid_obs = self._create_grid_representation()
+            obs_dict["grid"] = grid_obs
 
         return obs_dict
     
@@ -160,11 +179,11 @@ class GridEnv(gym.Env):
         self._canvas = None
         
         # We will sample the target's location randomly until it does not coincide with the agent's location
-        if self.use_target:
-            self._target_location = self._agent_location
-            while np.array_equal(self._target_location, self._agent_location):
-                target_location_id = self.np_random.integers(0, self.n_states, size=1, dtype=int)
-                self._target_location = self._states[target_location_id].flatten()
+        target_location_id = self.np_random.integers(0, self.n_states-1, size=1, dtype=int)
+        if target_location_id < agent_location_id:
+            self._target_location = self._states[target_location_id].flatten()
+        else:
+            self._target_location = self._states[target_location_id+1].flatten()
 
         observation = self._get_obs()
         info = self._get_info()
@@ -215,30 +234,53 @@ class GridEnv(gym.Env):
                 canvas=self._canvas
             )
         
-    def _create_canvas(self):
+    def _create_grid_representation(self, agent_location=None, target_location=None):
+        # Get empty grid representation
+        grid_obs = self.grid_array.copy()
+
+        # Fill grid representation with the agent
+        if agent_location is None:
+            agent_location = self._agent_location
+        grid_obs[agent_location[0], agent_location[1]] = [0, 0, 255]
+
+        # Fill grid representation with the target
+        if self.use_target:
+            if target_location is None:
+                target_location = self._target_location
+            grid_obs[target_location[0], target_location[1]] = [255, 0, 0]
+        
+        return grid_obs
+
+    def _create_canvas(self, agent_location=None, target_location=None, use_target=None, grid_width=1):
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))
         pix_square_sizes = np.array([
-            self.window_size / self.height,
-            self.window_size / self.width,
+            float(self.window_size) / float(self.height),
+            float(self.window_size) / float(self.width),
         ])  # The size of a single grid square in pixels
 
         # First we draw the target
-        if self.use_target:
+        if use_target is None:
+            use_target = self.use_target
+        if use_target:
+            if target_location is None:
+                target_location = self._target_location
             pygame.draw.rect(
                 canvas,
                 (255, 0, 0),
                 pygame.Rect(
-                    (pix_square_sizes * self._target_location)[::-1],
+                    (pix_square_sizes * target_location.astype(float) + grid_width)[::-1],
                     pix_square_sizes[::-1],
                 ),
             )
 
         # Now we draw the agent
+        if agent_location is None:
+            agent_location = self._agent_location
         pygame.draw.circle(
             canvas,
             (0, 0, 255),
-            ((self._agent_location + 0.5) * pix_square_sizes)[::-1],
+            ((agent_location.astype(float) + 0.5) * pix_square_sizes + grid_width/2)[::-1],
             min(pix_square_sizes) / 3,
         )
 
@@ -249,7 +291,7 @@ class GridEnv(gym.Env):
                     canvas,
                     (110, 110, 110),
                     pygame.Rect(
-                        (pix_square_sizes * np.array([i,j]))[::-1],
+                        (pix_square_sizes * np.array([i,j]).astype(float) + grid_width)[::-1],
                         (pix_square_sizes)[::-1],
                     ),
                 )
@@ -261,7 +303,7 @@ class GridEnv(gym.Env):
                 0,
                 (0, pix_square_sizes[0] * x),
                 (self.window_size, pix_square_sizes[0] * x),
-                width=3,
+                width=grid_width,
             )
 
         for x in range(self.width + 1):
@@ -270,7 +312,7 @@ class GridEnv(gym.Env):
                 0,
                 (pix_square_sizes[1] * x, 0),
                 (pix_square_sizes[1] * x, self.window_size),
-                width=3,
+                width=grid_width,
             )
 
         return canvas
@@ -404,12 +446,37 @@ class GridEnv(gym.Env):
         else:
             print('Dynamics matrix is not symmetric.')
 
-        a = 0
-
         return eigvals, eigvecs
     
     def get_states(self):
-        return self._states
+        # Create dictionary with states
+        state_dict = {}
+
+        # Add xy location representation
+        if self.obs_mode in ["xy", "both", "both-grid"]:
+            state_dict["xy_agent"] = self._states
+        
+        # Add pixel representation
+        if self.obs_mode in ["pixels", "both"]:
+            frame_list = []
+            for i in range(self.n_states):
+                agent_location = self._states[i].flatten()
+                frame = self._render_frame(
+                    render_mode="rgb_array", 
+                    canvas=self._create_canvas(agent_location=agent_location)
+                )
+                frame_list.append(frame)
+            state_dict["pixels"] = np.stack(frame_list, axis=0)
+
+        # Add grid representation
+        if self.obs_mode in ["grid", "both-grid"]:
+            grid_list = []
+            for i in range(self.n_states):
+                agent_location = self._states[i].flatten()
+                grid_obs = self._create_grid_representation(agent_location=agent_location)
+                grid_list.append(grid_obs)
+            state_dict["grid"] = np.stack(grid_list, axis=0)
+        return state_dict
     
     def get_eigenvectors(self):
         return self._eigvec

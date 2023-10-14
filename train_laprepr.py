@@ -20,7 +20,7 @@ from src.trainer import (
 from src.agent.episodic_replay_buffer import EpisodicReplayBuffer
 
 from src.nets import (
-    MLP, generate_hk_module_fn,
+    MLP, ConvNet, generate_hk_module_fn,
 )
 import wandb
 
@@ -52,8 +52,14 @@ def main(hyperparams):
     algorithm = hparam_yaml['algorithm']
     rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
     hidden_dims = hparam_yaml['hidden_dims']
+    obs_mode = hparam_yaml['obs_mode']
 
-    encoder_fn = generate_hk_module_fn(MLP, d, hidden_dims, hparam_yaml['activation'])
+    if obs_mode not in ['xy']:
+        encoder_net = ConvNet
+    else:
+        encoder_net = MLP
+
+    encoder_fn = generate_hk_module_fn(encoder_net, d, hidden_dims, hparam_yaml['activation'])   # TODO: Consider the observation space (e.g. pixels)
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     
@@ -61,7 +67,7 @@ def main(hyperparams):
 
     if hparam_yaml['use_wandb']:
         # Set wandb save directory
-        if hparam_yaml['save_dir'] is None:
+        if hparam_yaml.get('save_dir', None) is None:
             save_dir = os.getcwd()
             os.makedirs(save_dir, exist_ok=True)
             hparam_yaml['save_dir'] = save_dir
@@ -137,6 +143,13 @@ if __name__ == '__main__':
         "--save_model", 
         action="store_true",
         help="Raise the flag to save the model."
+    )
+
+    parser.add_argument(
+        '--obs_mode', 
+        type=str, 
+        default= 'xy',
+        help='Observation mode.'
     )
 
     parser.add_argument(

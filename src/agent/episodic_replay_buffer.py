@@ -147,7 +147,7 @@ class EpisodicReplayBuffer:
         visitation_counts = collections.defaultdict(int)
         for episode in self._episodes:
             for step in episode:
-                agent_state = step.step.agent_state['agent'].tolist()   # This assumes that the agent state is a numpy array
+                agent_state = step.step.agent_state['xy_agent'].tolist()   # This assumes that the agent state is available and that it is a numpy array
                 x = round(agent_state[1], 5)
                 y = round(agent_state[0], 5)
                 visitation_counts[(y,x)] += 1

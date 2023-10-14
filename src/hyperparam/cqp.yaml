@@ -22,6 +22,7 @@ save_eig: True
 save_model: False
 save_model_every: 50000
 do_plot_eigenvectors: False
+obs_mode: xy
 algorithm: cqp
 error_update_rate: 1
 q_error_update_rate: 0.1

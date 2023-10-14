@@ -4,11 +4,11 @@ def normalize_obs(obs, lim_):
     if isinstance(obs, list):
         obs_list = []
         for o, l in zip(obs, lim_):
-            obs_list.append(o/l - 0.5)
+            obs_list.append(o.astype(np.float32)/l - 0.5)
         return np.array(obs_list)
     
     elif isinstance(obs, np.ndarray):
-        return obs / lim_ - 0.5
+        return obs
     
     else:
         raise TypeError("obs must be list or np.ndarray")
@@ -21,5 +21,5 @@ def normalize_pos_vec(pos, grid_shape):
 def normalize_obs_dict(obs_dict, grid_sizes):
     for obs_type, lim_ in zip(obs_dict.keys(), grid_sizes):
         obs_dict[obs_type] = normalize_obs(
-            obs_dict[obs_type].astype(np.float32), lim_)
+            obs_dict[obs_type], lim_)
     return obs_dict

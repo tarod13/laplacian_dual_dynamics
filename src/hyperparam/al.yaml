@@ -4,7 +4,7 @@ batch_size: 1024
 discount: 0.9
 log_dir: '/tmp/rl_laprepr/log'
 total_train_steps: 50000
-print_freq: 1000
+print_freq: 100
 max_episode_steps: 50
 seed: 1234
 env_name: GridRoom-16
@@ -22,11 +22,12 @@ save_eig: True
 save_model: False
 save_model_every: 50000
 do_plot_eigenvectors: False
+obs_mode: xy
 algorithm: al
 error_update_rate: 1
 q_error_update_rate: 0.1
 normalize_graph_loss: False
-barrier_initial_val: 1.0
+barrier_initial_val: 2.0
 lr_barrier_coefs: 1.0
 min_barrier_coefs: 0
 max_barrier_coefs: 10000

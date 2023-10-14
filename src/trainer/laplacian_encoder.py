@@ -46,8 +46,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self._date_time = datetime.now().strftime("%Y%m%d%H%M%S")
 
     def _get_obs_batch(self, steps):   # TODO: Check this function (way to build the batch)
-        obs_batch = [s.step.agent_state["agent"].astype(np.float32)
-                for s in steps]
+        if self.obs_mode in ["xy"]:
+            obs_batch = [s.step.agent_state["xy_agent"].astype(np.float32)
+                    for s in steps]
+        elif self.obs_mode in ["pixels", "both"]:
+            obs_batch = [s.step.agent_state["pixels"].astype(np.float32)/255 for s in steps]
+        elif self.obs_mode in ["grid", "both-grid"]:
+            obs_batch = [s.step.agent_state["grid"].astype(np.float32)/255 for s in steps]
         return np.stack(obs_batch, axis=0)
 
     def _get_train_batch(self):
@@ -94,6 +99,12 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         
         # Initialize the optimizer
         opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?
+
+        # Test the initial parameters
+        sample_output = self.encoder_fn.apply(params['encoder'], sample_input.s1)
+        avg_sample_output_norm = jnp.linalg.norm(sample_output, axis=1, keepdims=True).mean()
+        if avg_sample_output_norm < 1e-6:
+            raise Warning(f'Initial parameters have an average norm of {avg_sample_output_norm}. There might be a problem with the ConvNet layers')
 
         # Learning begins   # TODO: Better comments
         timer.set_step(0)
@@ -237,6 +248,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             render_mode="rgb_array", 
             use_target=False, 
             eig=eig,
+            obs_mode=self.obs_mode,
         )
         # Wrap environment with observation normalization
         obs_wrapper = lambda e: NormObs(e)
@@ -265,7 +277,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Create eigenvector dictionary
         real_eigval = eigenvalues[:self.d]
         real_eigvec = self.env.get_eigenvectors()[:,:self.d]
-
 
         assert not np.isnan(real_eigvec).any(), \
             f'NaN values in the real eigenvectors: {real_eigvec}'
@@ -327,7 +338,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Plot visitation counts
         min_visitation, max_visitation, visitation_entropy, max_entropy, visitation_freq = \
             self.replay_buffer.plot_visitation_counts(
-                self.env.get_states(),
+                self.env.get_states()['xy_agent'],   # TODO: Make this more general (not only for xy or both)
                 self.env_name,
                 self.env.grid.astype(bool),
         )
@@ -368,32 +379,24 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 if (self.step_counter % self.steps_to_update_target) == 0:
                     self.model._update_target(soft=False, target_update_rate=1.0)
 
-    def compute_cosine_similarity_no_rotations(self, params_encoder):
-        # Get baseline parameters
-        states = self.env.get_states()
-        real_eigvec = self.env.get_eigenvectors()[:,:self.d]
-        real_eigvec = jnp.array(real_eigvec)
-        real_norms = jnp.linalg.norm(real_eigvec, axis=0, keepdims=True).clip(min=1e-10)
-        real_eigvec = real_eigvec / real_norms
+    def get_states(self):
+        state_dict = self.env.get_states()
+        if self.obs_mode in ["pixels", "both"]:
+            states = state_dict['pixels']
+        elif self.obs_mode in ["grid", "both-grid"]:
+            states = state_dict['grid']
+        elif self.obs_mode in ["xy"]:
+            states = state_dict['xy_agent']
+        else:
+            raise ValueError(f'Invalid observation mode: {self.obs_mode}')
+        return states
 
-        # Get approximated eigenvectors
-        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
-        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True).clip(min=1e-10)
-        approx_eigvec = approx_eigvec / norms
-        
-        # Compute cosine similarities for both directions
-        sim_first_dir = (approx_eigvec * real_eigvec).sum(axis=0)
-        sim_second_dir = (- approx_eigvec * real_eigvec).sum(axis=0)
-
-        # Take the maximum similarity for each eigenvector
-        similarities = jnp.maximum(sim_first_dir, sim_second_dir)
-        cosine_similarity = similarities.mean()
-        return cosine_similarity, similarities
-    
     def compute_cosine_similarity(self, params_encoder):
+        # Get states
+        states = self.get_states()
+
         # Get approximated eigenvectors
-        states = self.env.get_states()
-        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
+        approx_eigvec = self.encoder_fn.apply(params_encoder, states)   # TODO: Do some minibatch processing here
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
         
@@ -543,8 +546,10 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         return rotated_eigvec
     
     def compute_maximal_cosine_similarity(self, params_encoder):
+        # Get states
+        states = self.get_states()
+
         # Get approximated eigenvectors
-        states = self.env.get_states()
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
@@ -580,9 +585,10 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     
     def plot_eigenvectors(self, params_encoder):
         """Plot each of the eigenvectors."""
-        
+        # Get states
+        states = self.get_states()
+
         # Get approximated eigenvectors
-        states = self.env.get_states()
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms.clip(min=1e-10)   
