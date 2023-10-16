@@ -47,19 +47,37 @@ def main(hyperparams):
     # Initialize timer
     timer = timer_tools.Timer()
 
+    # Override observation mode if Atari
+    if hparam_yaml['env_family'] in ['Atari-v5']:
+        hparam_yaml['obs_mode'] = 'pixels'
+
     # Create trainer
     d = hparam_yaml['d']
     algorithm = hparam_yaml['algorithm']
     rng_key = jax.random.PRNGKey(hparam_yaml['seed'])
     hidden_dims = hparam_yaml['hidden_dims']
     obs_mode = hparam_yaml['obs_mode']
-
+    
+    # Set encoder network
     if obs_mode not in ['xy']:
         encoder_net = ConvNet
+        with open(f'./src/hyperparam/env_params.yaml', 'r') as f:
+            env_params = yaml.safe_load(f)
+        n_conv_layers = env_params[hparam_yaml['env_name']]['n_conv_layers']
+        specific_params = {
+            'n_conv_layers': n_conv_layers,
+        }
     else:
         encoder_net = MLP
+        specific_params = {}
+    hparam_yaml.update(specific_params)
 
-    encoder_fn = generate_hk_module_fn(encoder_net, d, hidden_dims, hparam_yaml['activation'])   # TODO: Consider the observation space (e.g. pixels)
+    encoder_fn = generate_hk_module_fn(
+        encoder_net, 
+        d, hidden_dims, 
+        hparam_yaml['activation'], 
+        **specific_params    
+    )   # TODO: Consider the observation space (e.g. pixels)
     
     optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
     

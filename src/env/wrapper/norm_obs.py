@@ -89,3 +89,15 @@ class NormObs(ObservationWrapper):
             (new_width, new_height), resample=Image.Resampling.BOX)
         resized_image = np.array(resized_image).astype(np.uint8).clip(0, 255)
         return resized_image
+    
+class NormObsAtari(ObservationWrapper):
+    def __init__(self, env, *args, **kwargs):
+        super().__init__(env, *args, **kwargs)
+        obs_dict = {}
+        obs_dict["pixels"] = spaces.Box(
+            low=0, high=255, shape=(210,160,3), dtype=np.uint8)
+        self.observation_space = spaces.Dict(obs_dict)
+        
+    def observation(self, observation):
+        obs_dict = {'pixels': observation}
+        return obs_dict

@@ -24,6 +24,7 @@ save_model: False
 save_model_every: 100000
 do_plot_eigenvectors: False
 obs_mode: xy
+window_size: 128
 algorithm: ggdo
 asymmetric_normalization: False
 coefficient_normalization: True

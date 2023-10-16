@@ -1,0 +1,26 @@
+GridMaze-7:
+  n_conv_layers: 2
+GridMaze-9:
+  n_conv_layers: 2
+GridMaze-11:
+  n_conv_layers: 2
+GridMaze-17:
+  n_conv_layers: 2
+GridMaze-19:
+  n_conv_layers: 2
+GridMaze-26:
+  n_conv_layers: 2
+GridMaze-32:
+  n_conv_layers: 2
+GridRoom-1:
+  n_conv_layers: 2
+GridRoom-4:
+  n_conv_layers: 2
+GridRoom-16:
+  n_conv_layers: 2
+GridRoom-32:
+  n_conv_layers: 2
+GridRoom-64:
+  n_conv_layers: 2
+GridRoomSym-4:
+  n_conv_layers: 2

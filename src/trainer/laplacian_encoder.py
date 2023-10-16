@@ -11,7 +11,7 @@ from gymnasium.wrappers import TimeLimit
 import wandb
 
 import src.env
-from src.env.wrapper.norm_obs import NormObs
+from src.env.wrapper.norm_obs import NormObs, NormObsAtari
 from src.agent.agent import BehaviorAgent as Agent
 from src.policy import DiscreteUniformRandomPolicy as Policy
 from src.env.grid.utils import load_eig
@@ -29,7 +29,10 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import Rbf
 
 
-Data = namedtuple("Data", "s1 s2 s_neg_1 s_neg_2")   # TODO: Change notation
+MC_sample = namedtuple(
+    "MC_sample", 
+    "state future_state uncorrelated_state_1 uncorrelated_state_2"
+)
 
 
 class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
@@ -56,14 +59,15 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         return np.stack(obs_batch, axis=0)
 
     def _get_train_batch(self):
-        s1, s2 = self.replay_buffer.sample_pairs(
+        state, future_state = self.replay_buffer.sample_pairs(
                 batch_size=self.batch_size,
                 discount=self.discount,
                 )
-        s_neg_1 = self.replay_buffer.sample_steps(self.batch_size)
-        s_neg_2 = self.replay_buffer.sample_steps(self.batch_size)
-        s_pos_1, s_pos_2, s_neg_1, s_neg_2 = map(self._get_obs_batch, [s1, s2, s_neg_1, s_neg_2])
-        batch = Data(s_pos_1, s_pos_2, s_neg_1, s_neg_2)
+        uncorrelated_state_1 = self.replay_buffer.sample_steps(self.batch_size)
+        uncorrelated_state_2 = self.replay_buffer.sample_steps(self.batch_size)
+        state, future_state, uncorrelated_state_1, uncorrelated_state_2 = map(
+            self._get_obs_batch, [state, future_state, uncorrelated_state_1, uncorrelated_state_2])
+        batch = MC_sample(state, future_state, uncorrelated_state_1, uncorrelated_state_2)
         return batch
 
     def train_step(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
@@ -89,7 +93,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Initialize the parameters
         rng = hk.PRNGSequence(self.rng_key)
         sample_input = self._get_train_batch()
-        encoder_params = self.encoder_fn.init(next(rng), sample_input.s1)
+        encoder_params = self.encoder_fn.init(next(rng), sample_input.state)
         params = {
             'encoder': encoder_params,
         }
@@ -101,7 +105,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         opt_state = self.optimizer.init(params)   # TODO: Should encoder_params be the only ones updated by the optimizer?
 
         # Test the initial parameters
-        sample_output = self.encoder_fn.apply(params['encoder'], sample_input.s1)
+        sample_output = self.encoder_fn.apply(params['encoder'], sample_input.state)
         avg_sample_output_norm = jnp.linalg.norm(sample_output, axis=1, keepdims=True).mean()
         if avg_sample_output_norm < 1e-6:
             raise Warning(f'Initial parameters have an average norm of {avg_sample_output_norm}. There might be a problem with the ConvNet layers')
@@ -235,7 +239,19 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self.step_counter += 1
         self.log_counter = (self.log_counter + 1) % self.print_freq
         
+    @property
+    def is_tabular(self):
+        return self.env_family in ['Grid-v0']
+
     def build_environment(self):
+        if self.is_tabular:
+            self.build_tabular_environment()
+        elif self.env_family == 'Atari-v5':
+            self.build_atari_environment()
+        else:
+            raise ValueError(f'Invalid environment family: {self.env_family}')
+
+    def build_tabular_environment(self):
         # Load eigenvectors and eigenvalues of the transition dynamics matrix (if they exist)
         path_eig = f'./src/env/grid/eigval/{self.env_name}.npz'
         eig, eig_not_found = load_eig(path_eig)
@@ -249,6 +265,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             use_target=False, 
             eig=eig,
             obs_mode=self.obs_mode,
+            window_size=self.window_size,
         )
         # Wrap environment with observation normalization
         obs_wrapper = lambda e: NormObs(e)
@@ -312,6 +329,25 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             }
             self.logger.log(eigval_dict)
 
+    def build_atari_environment(self):
+        env_name = f'ALE/{self.env_name}-v5'
+        env = gym.make(env_name)
+        
+        # Wrap environment with observation normalization
+        obs_wrapper = lambda e: NormObsAtari(e)
+        env = obs_wrapper(env)
+
+        # Wrap environment with time limit
+        time_wrapper = lambda e: TimeLimit(
+            e, max_episode_steps=self.max_episode_steps)
+        env = time_wrapper(env)
+
+        # Set seed
+        env.reset(seed=self.seed)
+
+        # Set environment as attribute
+        self.env = env
+
     def collect_experience(self) -> None:
         # Create agent
         policy = Policy(
@@ -336,32 +372,23 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         print(f'Data collection finished, time cost: {time_cost}s')
         
         # Plot visitation counts
-        min_visitation, max_visitation, visitation_entropy, max_entropy, visitation_freq = \
-            self.replay_buffer.plot_visitation_counts(
-                self.env.get_states()['xy_agent'],   # TODO: Make this more general (not only for xy or both)
-                self.env_name,
-                self.env.grid.astype(bool),
-        )
-        time_cost = timer.time_cost()
-        print(f'Visitation evaluated, time cost: {time_cost}s')
-        print(f'Min visitation: {min_visitation}')
-        print(f'Max visitation: {max_visitation}')
-        print(f'Visitation entropy: {visitation_entropy}/{max_entropy}')
-    
+        if self.obs_mode in ['xy']:
+            self.plot_visitation_counts(timer)
+   
     def encode_states(
             self, 
             params_encoder,
-            train_batch: Data,
+            train_batch: MC_sample,
             *args, **kwargs,
         ) -> Tuple[jnp.ndarray]:
 
         # Compute start representations
-        start_representation = self.encoder_fn.apply(params_encoder, train_batch.s1)
-        constraint_start_representation = self.encoder_fn.apply(params_encoder, train_batch.s_neg_1)
+        start_representation = self.encoder_fn.apply(params_encoder, train_batch.state)
+        constraint_start_representation = self.encoder_fn.apply(params_encoder, train_batch.uncorrelated_state_1)
 
         # Compute end representations
-        end_representation = self.encoder_fn.apply(params_encoder, train_batch.s2)
-        constraint_end_representation = self.encoder_fn.apply(params_encoder, train_batch.s_neg_2)
+        end_representation = self.encoder_fn.apply(params_encoder, train_batch.future_state)
+        constraint_end_representation = self.encoder_fn.apply(params_encoder, train_batch.uncorrelated_state_2)
 
         return (
             start_representation, end_representation, 
@@ -582,6 +609,19 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         cosine_similarity = similarities.mean()
 
         return cosine_similarity, similarities
+    
+    def plot_visitation_counts(self, timer):
+        min_visitation, max_visitation, visitation_entropy, max_entropy, visitation_freq = \
+                self.replay_buffer.plot_visitation_counts(
+                    self.env.get_states()['xy_agent'],   # TODO: Make this more general (not only for xy or both)
+                    self.env_name,
+                    self.env.grid.astype(bool),
+            )
+        time_cost = timer.time_cost()
+        print(f'Visitation evaluated, time cost: {time_cost}s')
+        print(f'Min visitation: {min_visitation}')
+        print(f'Max visitation: {max_visitation}')
+        print(f'Visitation entropy: {visitation_entropy}/{max_entropy}')
     
     def plot_eigenvectors(self, params_encoder):
         """Plot each of the eigenvectors."""
