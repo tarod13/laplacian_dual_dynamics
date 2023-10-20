@@ -7,12 +7,30 @@ import src.env
 from src.env.wrapper.norm_obs import NormObs
 from src.env.grid.utils import load_eig
 
+import cv2
+
+def resize_pixels(original_image, reduction_factor=1):
+    if reduction_factor == 1:
+        return original_image
+
+    original_height, original_width, _ = original_image.shape
+    new_width = original_width // reduction_factor
+    new_height = original_height // reduction_factor
+
+    resized_image = cv2.resize(
+        original_image, 
+        (new_width, new_height), 
+        interpolation = cv2.INTER_AREA
+    )
+
+    return resized_image
+
 if __name__ == "__main__":
     use_wrapper = True
-    reduction_factor = 4
+    reduction_factor = 32
     filter = Image.Resampling.BOX
-    env_name = 'GridMaze-9'
-    obs_mode = 'grid'
+    env_name = 'GridRoom-64'
+    obs_mode = 'pixels'
     path_txt_grid = f'./src/env/grid/txts/{env_name}.txt'
     path_eig = f'./src/env/grid/eigval/{env_name}.npz'
 
@@ -25,7 +43,7 @@ if __name__ == "__main__":
         eig=eig, 
         obs_mode=obs_mode, 
         calculate_eig=False,
-        window_size=512,
+        window_size=1024,
         use_target=False,
     )
 
@@ -36,21 +54,23 @@ if __name__ == "__main__":
     print(env.grid.shape)
     observation, info = env.reset()
 
-    for i in range(100):
+    for i in range(10):
         action = env.action_space.sample()  # agent policy that uses the observation and info
         observation, reward, terminated, truncated, info = env.step(action)
 
 
         if (obs_mode in observation.keys()) and (obs_mode != 'xy') and (i == 0):
             original_image = observation['pixels' if obs_mode in ['pixels', 'both'] else 'grid']
-            original_image = Image.fromarray(original_image)
-
-            original_width, original_height = original_image.size
-            new_width = original_width // reduction_factor
-            new_height = original_height // reduction_factor
-            resized_image = original_image.resize((new_width, new_height), resample=filter)
-            resized_image = np.array(resized_image)
             original_image = np.array(original_image)
+            resized_image = resize_pixels(original_image, reduction_factor=reduction_factor)
+            # original_image = Image.fromarray(original_image)
+
+            # original_width, original_height = original_image.size
+            # new_width = original_width // reduction_factor
+            # new_height = original_height // reduction_factor
+            # resized_image = original_image.resize((new_width, new_height), resample=filter)
+            # resized_image = np.array(resized_image)
+            # original_image = np.array(original_image)
 
             fig, axes = plt.subplots(1, 2, figsize=(10, 5))
             axes[0].imshow(original_image)

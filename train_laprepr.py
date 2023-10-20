@@ -64,6 +64,8 @@ def main(hyperparams):
         with open(f'./src/hyperparam/env_params.yaml', 'r') as f:
             env_params = yaml.safe_load(f)
         n_conv_layers = env_params[hparam_yaml['env_name']]['n_conv_layers']
+        if obs_mode in ['pixels', 'both']:
+            n_conv_layers += 1
         specific_params = {
             'n_conv_layers': n_conv_layers,
         }

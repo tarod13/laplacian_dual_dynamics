@@ -47,7 +47,7 @@ class NormObs(ObservationWrapper):
                 lims_.append(grid_shape)
         if self.obs_mode in ["pixels", "both"]:
             lims_.append(255)
-            observation["pixels"] = observation["pixels"]
+            observation["pixels"] = self.resize_pixels(observation["pixels"])
         if self.obs_mode in ["grid", "both-grid"]:
             lims_.append(255)
             observation["grid"] = observation["grid"]
@@ -65,7 +65,9 @@ class NormObs(ObservationWrapper):
         
         if self.obs_mode in ["pixels", "both"]:
             pixels = state_dict["pixels"]
-            pixels = pixels.copy().astype(np.float32)
+            pixels = [self.resize_pixels(p) for p in pixels]
+            pixels = np.stack(pixels, axis=0)
+            pixels = pixels.astype(np.float32)
             pixels /= 255
             state_dict["pixels"] = pixels
         
@@ -76,6 +78,22 @@ class NormObs(ObservationWrapper):
             state_dict["grid"] = grid
         
         return state_dict
+    
+    # def resize_pixels(self, original_image):
+    #     if self.reduction_factor == 1:
+    #         return original_image
+
+    #     original_height, original_width, _ = original_image.shape
+    #     new_width = original_width // self.reduction_factor
+    #     new_height = original_height // self.reduction_factor
+
+    #     resized_image = cv2.resize(
+    #         original_image, 
+    #         (new_width, new_height), 
+    #         interpolation = cv2.INTER_AREA
+    #     )
+
+    #     return resized_image
     
     def resize_pixels(self, original_image):
         if self.reduction_factor == 1:

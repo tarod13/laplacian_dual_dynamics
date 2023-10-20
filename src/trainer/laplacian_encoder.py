@@ -269,7 +269,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             window_size=self.window_size,
         )
         # Wrap environment with observation normalization
-        obs_wrapper = lambda e: NormObs(e)
+        obs_wrapper = lambda e: NormObs(
+            e, reduction_factor=self.reduction_factor)
         env = obs_wrapper(env)
         # Wrap environment with time limit
         time_wrapper = lambda e: TimeLimit(

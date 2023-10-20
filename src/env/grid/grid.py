@@ -18,6 +18,7 @@ except ImportError:
 import gymnasium as gym
 from gymnasium import spaces
 import pygame
+import pygame.gfxdraw
 
 from src.env.grid.utils import txt_to_grid
 
@@ -280,40 +281,56 @@ class GridEnv(gym.Env):
         pygame.draw.circle(
             canvas,
             (0, 0, 255),
-            ((agent_location.astype(float) + 0.5) * pix_square_sizes + grid_width/2)[::-1],
-            min(pix_square_sizes) / 3,
+            ((agent_location.astype(float) + grid_width/2) * pix_square_sizes + grid_width/2)[::-1],
+            1*min(pix_square_sizes) / 2,
         )
 
         # Now we draw the walls
         for i, j in product(range(self.height), range(self.width)):
             if not self.grid[i,j]:
-                pygame.draw.rect(
-                    canvas,
-                    (110, 110, 110),
-                    pygame.Rect(
-                        (pix_square_sizes * np.array([i,j]).astype(float) + grid_width)[::-1],
-                        (pix_square_sizes)[::-1],
-                    ),
-                )
+                rect_points = [
+                    (pix_square_sizes * np.array([i, j]).astype(float) + grid_width * np.array([1,1])/2)[::-1],
+                    (pix_square_sizes * np.array([i + 1, j]).astype(float) + grid_width * np.array([1,1])/2)[::-1],
+                    (pix_square_sizes * np.array([i + 1, j + 1]).astype(float) + grid_width * np.array([1,1])/2)[::-1],
+                    (pix_square_sizes * np.array([i, j + 1]).astype(float) + grid_width * np.array([1,1])/2)[::-1],
+                ]
+                pygame.gfxdraw.filled_polygon(canvas, rect_points, (110, 110, 110))
+                # canvas.fill(
+                #     (110, 110, 110),
+                #     pygame.Rect(
+                #         (pix_square_sizes * np.array([i,j]).astype(float) + grid_width)[::-1],
+                #         (pix_square_sizes)[::-1],
+                #     ).inflate(4*grid_width/5, 4*grid_width/5),
+                # )
+                # pygame.draw.rect(
+                #     canvas,
+                #     (110, 110, 110),
+                #     pygame.Rect(
+                #         (pix_square_sizes * np.array([i,j]).astype(float) + grid_width)[::-1],
+                #         (pix_square_sizes)[::-1],
+                #     ),
+                #     width=0,
+                # )
 
         # Finally, add some gridlines
-        for x in range(self.height + 1):
-            pygame.draw.line(
-                canvas,
-                0,
-                (0, pix_square_sizes[0] * x),
-                (self.window_size, pix_square_sizes[0] * x),
-                width=grid_width,
-            )
+        if not self.obs_mode in ["pixels", "both"]:
+            for x in range(self.height + 1):
+                pygame.draw.line(
+                    canvas,
+                    0,
+                    (0, pix_square_sizes[0] * x),
+                    (self.window_size, pix_square_sizes[0] * x),
+                    width=grid_width,
+                )
 
-        for x in range(self.width + 1):
-            pygame.draw.line(
-                canvas,
-                0,
-                (pix_square_sizes[1] * x, 0),
-                (pix_square_sizes[1] * x, self.window_size),
-                width=grid_width,
-            )
+            for x in range(self.width + 1):
+                pygame.draw.line(
+                    canvas,
+                    0,
+                    (pix_square_sizes[1] * x, 0),
+                    (pix_square_sizes[1] * x, self.window_size),
+                    width=grid_width,
+                )
 
         return canvas
 
@@ -466,7 +483,7 @@ class GridEnv(gym.Env):
                     canvas=self._create_canvas(agent_location=agent_location)
                 )
                 frame_list.append(frame)
-            state_dict["pixels"] = np.stack(frame_list, axis=0)
+            state_dict["pixels"] = frame_list
 
         # Add grid representation
         if self.obs_mode in ["grid", "both-grid"]:
