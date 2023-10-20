@@ -26,8 +26,8 @@ class NormObs(ObservationWrapper):
                     3), 
                 dtype=np.uint8)
             
-        if self.obs_mode in ["pixels", "both"]:
-            obs_dict["pixels"] = spaces.Box(
+        if self.obs_mode in ["grid", "both-grid"]:
+            obs_dict["grid"] = spaces.Box(
                 low=0, high=255, 
                 shape=(
                     self.height//reduction_factor, 
@@ -47,8 +47,8 @@ class NormObs(ObservationWrapper):
                 lims_.append(grid_shape)
         if self.obs_mode in ["pixels", "both"]:
             lims_.append(255)
-            observation["pixels"] = self.resize_pixels(observation["pixels"])
-        if self.obs_mode in ["gird", "both-grid"]:
+            observation["pixels"] = observation["pixels"]
+        if self.obs_mode in ["grid", "both-grid"]:
             lims_.append(255)
             observation["grid"] = observation["grid"]
         return normalize_obs_dict(observation, lims_)

@@ -128,7 +128,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 losses = metrics[:-1]
                 metrics_dict = metrics[-1]
                 
-                cosine_similarity, similarities = self.compute_cosine_similarity(params['encoder'])
+                cosine_similarity, similarities = self.compute_cosine_similarity(
+                    params['encoder'], batch_size=self.batch_size)
                 maximal_cosine_similarity, maximal_similarities = self.compute_maximal_cosine_similarity(params['encoder'])
                 
                 metrics_dict['cosine_similarity'] = cosine_similarity
@@ -417,13 +418,24 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         else:
             raise ValueError(f'Invalid observation mode: {self.obs_mode}')
         return states
+    
+    def split_into_batches(self, data, batch_size=32):
+        num_batches = np.ceil(len(data) / batch_size).astype(int)
+        return [data[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
 
-    def compute_cosine_similarity(self, params_encoder):
+    def compute_cosine_similarity(self, params_encoder, batch_size=32):
         # Get states
         states = self.get_states()
+        state_batches = self.split_into_batches(states, batch_size)
 
         # Get approximated eigenvectors
-        approx_eigvec = self.encoder_fn.apply(params_encoder, states)   # TODO: Do some minibatch processing here
+        approx_eigvec_batches = []        
+        for state_batch in state_batches:
+            approx_eigvec = self.encoder_fn.apply(params_encoder, state_batch)
+            approx_eigvec_batches.append(approx_eigvec)
+        approx_eigvec = jnp.concatenate(approx_eigvec_batches, axis=0)
+
+        # approx_eigvec = self.encoder_fn.apply(params_encoder, states)   # TODO: Do some minibatch processing here
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
         

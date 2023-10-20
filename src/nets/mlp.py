@@ -88,7 +88,8 @@ class ConvNet(hk.Module):
 
     def __call__(self, x: np.ndarray) -> jax.Array:
         '''Forward pass through the layers.'''
-        x = self.conv(x)
-        x = self.flatten(x)
-        x = self.linear(x)
-        return x
+        x1 = self.conv(x)
+        x2 = self.flatten(x1)
+        x3 = self.linear(x2)
+        x4 = x3
+        return x4

@@ -121,13 +121,14 @@ def main(hyperparams):
     )
     trainer.train()
 
-    if hyperparams.wandb_offline:
+    if hparam_yaml['use_wandb'] and hyperparams.wandb_offline:
         os.environ['WANDB_MODE']='online'
         trainer.logger.finish()        
 
         bash_command = f"wandb sync {os.path.dirname(logger.dir)}"
         subprocess.call(bash_command, shell=True)
 
+    if hparam_yaml['use_wandb']:
         # Delete wandb directory
         bash_command = f"rm -rf {os.path.dirname(logger.dir)}"
         subprocess.call(bash_command, shell=True)
