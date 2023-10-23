@@ -52,11 +52,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         if self.obs_mode in ["xy"]:
             obs_batch = [s.step.agent_state["xy_agent"].astype(np.float32)
                     for s in steps]
+            return np.stack(obs_batch, axis=0)
         elif self.obs_mode in ["pixels", "both"]:
-            obs_batch = [s.step.agent_state["pixels"].astype(np.float32)/255 for s in steps]
+            obs_batch = [s.step.agent_state["pixels"]for s in steps]
+            return jnp.stack(obs_batch, axis=0).astype(jnp.float32)/255
         elif self.obs_mode in ["grid", "both-grid"]:
             obs_batch = [s.step.agent_state["grid"].astype(np.float32)/255 for s in steps]
-        return np.stack(obs_batch, axis=0)
+            return np.stack(obs_batch, axis=0)
 
     def _get_train_batch(self):
         state, future_state = self.replay_buffer.sample_pairs(
@@ -427,14 +429,20 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     def compute_cosine_similarity(self, params_encoder, batch_size=32):
         # Get states
         states = self.get_states()
-        state_batches = self.split_into_batches(states, batch_size)
+        states = states.astype(jnp.float32)
+        states /= 255     
 
         # Get approximated eigenvectors
-        approx_eigvec_batches = []        
-        for state_batch in state_batches:
-            approx_eigvec = self.encoder_fn.apply(params_encoder, state_batch)
-            approx_eigvec_batches.append(approx_eigvec)
-        approx_eigvec = jnp.concatenate(approx_eigvec_batches, axis=0)
+        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
+        
+        # state_batches = self.split_into_batches(states, batch_size)
+
+        # # Get approximated eigenvectors
+        # approx_eigvec_batches = []        
+        # for state_batch in state_batches:
+        #     approx_eigvec = self.encoder_fn.apply(params_encoder, state_batch)
+        #     approx_eigvec_batches.append(approx_eigvec)
+        # approx_eigvec = jnp.concatenate(approx_eigvec_batches, axis=0)
 
         # approx_eigvec = self.encoder_fn.apply(params_encoder, states)   # TODO: Do some minibatch processing here
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
@@ -588,6 +596,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     def compute_maximal_cosine_similarity(self, params_encoder):
         # Get states
         states = self.get_states()
+        states = states.astype(jnp.float32)
+        states /= 255     
 
         # Get approximated eigenvectors
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)

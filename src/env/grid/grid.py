@@ -483,7 +483,7 @@ class GridEnv(gym.Env):
                     canvas=self._create_canvas(agent_location=agent_location)
                 )
                 frame_list.append(frame)
-            state_dict["pixels"] = frame_list
+            state_dict["pixels"] = np.stack(frame_list, axis=0)
 
         # Add grid representation
         if self.obs_mode in ["grid", "both-grid"]:

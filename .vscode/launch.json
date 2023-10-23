@@ -69,7 +69,7 @@
                 "--lr_barrier_coefs", "0.01",
                 "--save_dir", "./wandb",
                 "--lr", "0.001",
-                "--n_samples", "200000",
+                "--n_samples", "20000",
                 "--total_train_steps", "200000",
             ],
         }, 

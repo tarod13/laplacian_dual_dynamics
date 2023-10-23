@@ -7,11 +7,8 @@ def normalize_obs(obs, lim_):
             obs_list.append(o.astype(np.float32)/l - 0.5)
         return np.array(obs_list)
     
-    elif isinstance(obs, np.ndarray):
-        return obs
-    
     else:
-        raise TypeError("obs must be list or np.ndarray")
+        return obs
 
 def normalize_pos_vec(pos, grid_shape):
     x = pos[:,0] / grid_shape[0] - 0.5
