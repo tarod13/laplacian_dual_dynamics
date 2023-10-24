@@ -41,6 +41,9 @@ class NormObs(ObservationWrapper):
         self.reduction_factor = reduction_factor
 
     def _resize_pixels(self, pixels):
+        if self.reduction_factor == 1:
+            return pixels
+        
         shape = list(pixels.shape)
         shape[-3] //= self.reduction_factor
         shape[-2] //= self.reduction_factor

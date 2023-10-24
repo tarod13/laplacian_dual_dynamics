@@ -23,8 +23,8 @@ save_model: False
 save_model_every: 50000
 do_plot_eigenvectors: False
 obs_mode: xy
-window_size: 1024
-reduction_factor: 32
+window_size: 180
+reduction_factor: 1
 algorithm: al
 error_update_rate: 1
 q_error_update_rate: 0.1

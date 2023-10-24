@@ -10,6 +10,8 @@
 #SBATCH --array=0-779
 
 envs=("GridMaze-11" "GridRoom-64" "GridRoom-4" "GridRoomSym-4" "GridMaze-7" "GridMaze-17" "GridMaze-32" "GridMaze-26" "GridRoom-32" "GridMaze-9" "GridMaze-19" "GridRoom-1" "GridRoom-16")
+# 11 enough ('N', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y')
+# 12 enough ('Y', 'Y', 'Y', 'Y', 'N', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'N', 'Y')
 bs=(0.1)
 lrs=(0.01)
 configs=("al.yaml")

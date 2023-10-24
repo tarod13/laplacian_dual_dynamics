@@ -38,9 +38,9 @@ def resize_pixels(original_image, reduction_factor=1):
 
 if __name__ == "__main__":
     use_wrapper = True
-    reduction_factor = 32
+    reduction_factor = 1
     # filter = Image.Resampling.BOX
-    env_name = 'GridMaze-11'
+    env_name = 'GridRoom-64'
     obs_mode = 'pixels'
     path_txt_grid = f'./src/env/grid/txts/{env_name}.txt'
     path_eig = f'./src/env/grid/eigval/{env_name}.npz'
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         eig=eig, 
         obs_mode=obs_mode, 
         calculate_eig=False,
-        window_size=1024,
+        window_size=180,
         use_target=False,
     )
 
