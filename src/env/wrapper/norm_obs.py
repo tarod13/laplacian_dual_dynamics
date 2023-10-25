@@ -72,33 +72,27 @@ class NormObs(ObservationWrapper):
         return normalize_obs_dict(observation, lims_)
     
     def get_states(self):
-        if hasattr(self, 'state_dict'):
-            return self.state_dict
+        state_dict = self.env.get_states()
         
-        else:
-            state_dict = self.env.get_states()
+        if self.obs_mode in ["xy", "both", "both-grid"]:
+            xy_states = state_dict["xy_agent"]
+            xy_states = xy_states.copy().astype(np.float32)
+            grid_shape = self.env.grid.shape
+            xy_states = normalize_pos_vec(xy_states, grid_shape)
+            state_dict["xy_agent"] = xy_states
         
-            if self.obs_mode in ["xy", "both", "both-grid"]:
-                xy_states = state_dict["xy_agent"]
-                xy_states = xy_states.copy().astype(np.float32)
-                grid_shape = self.env.grid.shape
-                xy_states = normalize_pos_vec(xy_states, grid_shape)
-                state_dict["xy_agent"] = xy_states
-            
-            if self.obs_mode in ["pixels", "both"]:
-                pixels = state_dict["pixels"]
-                pixels = self._resize_pixels(pixels)
-                state_dict["pixels"] = pixels
-            
-            if self.obs_mode in ["grid", "both-grid"]:
-                grid = state_dict["grid"]
-                grid = grid.copy().astype(np.float32)
-                grid /= 255
-                state_dict["grid"] = grid
+        if self.obs_mode in ["pixels", "both"]:
+            pixels = state_dict["pixels"]
+            pixels = self._resize_pixels(pixels)
+            state_dict["pixels"] = pixels
+        
+        if self.obs_mode in ["grid", "both-grid"]:
+            grid = state_dict["grid"]
+            grid = grid.copy().astype(np.float32)
+            grid /= 255
+            state_dict["grid"] = grid
 
-            self.state_dict = state_dict
-        
-        return self.state_dict
+        return state_dict
     
     # def resize_pixels(self, original_image):
     #     if self.reduction_factor == 1:

@@ -54,7 +54,7 @@ if __name__ == "__main__":
         eig=eig, 
         obs_mode=obs_mode, 
         calculate_eig=False,
-        window_size=180,
+        window_size=172,
         use_target=False,
     )
 
