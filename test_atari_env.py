@@ -1,56 +1,41 @@
-# from PIL import Image
+import os
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pickle
 import gymnasium as gym
-import src.env
-from src.env.wrapper.norm_obs import NormObs
-from src.env.grid.utils import load_eig
 
-import jax
-
-# import cv2
-
-def resize_pixels(original_image, reduction_factor=1):
-    if reduction_factor == 1:
-        return original_image
-
-    original_height, original_width, n_channels = original_image.shape
-    new_width = original_width // reduction_factor
-    new_height = original_height // reduction_factor
-
-    # resized_image = cv2.resize(
-    #     original_image, 
-    #     (new_width, new_height), 
-    #     interpolation = cv2.INTER_AREA
-    # )
-    resized_image = jax.numpy.array(original_image)
-    resized_image = jax.image.resize(
-        resized_image, 
-        (new_width, new_height, n_channels), 
-        method=jax.image.ResizeMethod.LANCZOS3
-    ).astype(jax.numpy.float32) / 255
-
-    # JAX to numpy
-    resized_image = np.array(resized_image)
-
-    return resized_image
 
 if __name__ == "__main__":
-    use_wrapper = True
     env_name = 'ALE/MontezumaRevenge-v5'
+    save_path = f'./results/visuals/atari/{env_name[4:]}/trajectories.npy'
+    obs_list = []
     
+    # Create environment
     env = gym.make(
         env_name,
+        render_mode="human",
     )
 
+    # Generate observations
     observation, info = env.reset()
+    obs_list = [observation]
 
-    for i in range(10):
+    for i in range(100):
         action = env.action_space.sample()  # agent policy that uses the observation and info
         observation, reward, terminated, truncated, info = env.step(action)
+        obs_list.append(observation)
 
         if terminated or truncated:
             observation, info = env.reset()
-            
+            obs_list.append(observation)
+
     env.close()
+
+    # Create path if it does not exist
+    os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
+
+    # Save observations
+
+    with open(save_path, 'wb') as file:
+        observations = np.stack(obs_list, axis=0)
+        np.save(file, observations)

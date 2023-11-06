@@ -170,13 +170,13 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
 
-    def _compute_additional_metrics(self, metrics_dict):
+    def _compute_additional_metrics(self, params, metrics_dict):
         '''Compute additional metrics (cosine similarity, so far).'''
 
         if self.is_tabular:
-            metrics_dict = self._compute_metrics_tabular(metrics_dict)
+            metrics_dict = self._compute_metrics_tabular(params, metrics_dict)
         elif self.env_family == 'Atari-v5':
-            metrics_dict = self._compute_metrics_atari(metrics_dict)
+            metrics_dict = self._compute_metrics_atari(params, metrics_dict)
         else:
             raise ValueError(f'Invalid environment family: {self.env_family}')
     

@@ -24,3 +24,5 @@ GridRoom-64:
   n_conv_layers: 2
 GridRoomSym-4:
   n_conv_layers: 2
+MontezumaRevenge:
+  n_conv_layers: 2

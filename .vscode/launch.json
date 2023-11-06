@@ -92,6 +92,27 @@
                 "--n_samples", "200000",
                 "--total_train_steps", "200000",
             ],
+        },
+        {
+            "name": "Atari",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "S-T1", "--use_wandb", "--wandb_offline",
+                "--obs_mode", "both",
+                "--config_file", "al_atari.yaml", 
+                "--env_name", "MontezumaRevenge", 
+                "--barrier_initial_val", "0.01",
+                "--lr_barrier_coefs", "0.01",
+                "--save_dir", "./wandb",
+                "--lr", "0.001",
+                "--n_samples", "200000",
+                "--total_train_steps", "200000",
+                "--batch_size", "32",
+            ],
         }
     ]
 }
