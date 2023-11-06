@@ -143,8 +143,7 @@ class EpisodicReplayBuffer:
         return np.array(lengths, dtype=np.int64)
     
     def save_episodes(self, path):
-        with open(path, 'wb') as file:
-            pickle.dump(self._episodes, file)
+        
     
     def get_visitation_counts(self):
         """Return the visitation counts of each state."""
