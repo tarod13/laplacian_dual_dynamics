@@ -155,6 +155,12 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        "--deactivate_training", 
+        action="store_true",
+        help="Raise the flag to not train the mdel."
+    )
+
+    parser.add_argument(
         "--wandb_offline", 
         action="store_true",
         help="Raise the flag to use wandb offline."

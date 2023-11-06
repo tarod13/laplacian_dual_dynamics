@@ -38,7 +38,7 @@ def resize_pixels(original_image, reduction_factor=1):
 
 if __name__ == "__main__":
     use_wrapper = True
-    reduction_factor = 1
+    reduction_factor = 2
     # filter = Image.Resampling.BOX
     env_name = 'GridRoom-64'
     obs_mode = 'pixels'
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         eig=eig, 
         obs_mode=obs_mode, 
         calculate_eig=False,
-        window_size=172,
+        window_size=256,
         use_target=False,
     )
 

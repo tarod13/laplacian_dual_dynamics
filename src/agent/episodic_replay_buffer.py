@@ -1,5 +1,6 @@
 import numpy as np
 import collections
+import pickle
 
 
 # H: horizon, number of transitions.
@@ -140,6 +141,10 @@ class EpisodicReplayBuffer:
         for index in episode_indices:
             lengths.append(len(self._episodes[index]))
         return np.array(lengths, dtype=np.int64)
+    
+    def save_episodes(self, path):
+        with open(path, 'wb') as file:
+            pickle.dump(self._episodes, file)
     
     def get_visitation_counts(self):
         """Return the visitation counts of each state."""

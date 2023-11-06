@@ -130,26 +130,17 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 losses = metrics[:-1]
                 metrics_dict = metrics[-1]
                 
-                cosine_similarity, similarities = self.compute_cosine_similarity(
-                    params['encoder'], batch_size=self.batch_size)
-                maximal_cosine_similarity, maximal_similarities = self.compute_maximal_cosine_similarity(params['encoder'])
+                metrics_dict = self._compute_additional_metrics(params, metrics_dict)
                 
-                metrics_dict['cosine_similarity'] = cosine_similarity
-                metrics_dict['maximal_cosine_similarity'] = maximal_cosine_similarity
-                for feature in range(len(similarities)):
-                    metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]
-                    metrics_dict[f'maximal_cosine_similarity_{feature}'] = maximal_similarities[feature]
                 metrics_dict['grad_step'] = self._global_step
-                metrics_dict['examples'] = self._global_step * self.batch_size
+                metrics_dict['examples'] = self._global_step * self.batch_size                
                 metrics_dict['wall_clock_time'] = timer.time_cost()
-                
+
                 self.train_info['loss_total'] = np.array([jax.device_get(losses[0])])[0]
                 self.train_info['graph_loss'] = np.array([jax.device_get(losses[1])])[0]
                 self.train_info['dual_loss'] = np.array([jax.device_get(losses[2])])[0]
                 self.train_info['barrier_loss'] = np.array([jax.device_get(losses[3])])[0]
-                self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
-                self.train_info['max_cos_sim'] = np.array([jax.device_get(maximal_cosine_similarity)])[0]
-
+                
                 steps_per_sec = timer.steps_per_sec(step)
                 print(f'Training steps per second: {steps_per_sec:.4g}.')   # TODO: Use logging instead of print
 
@@ -174,10 +165,53 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 )
             )
             if is_save_step:
-                self._save_model(params, opt_state, cosine_similarity)
+                self._save_model(params, opt_state, metrics_dict['cosine_similarity'])
                     
         time_cost = timer.time_cost()
         print(f'Training finished, time cost {time_cost:.4g}s.')
+
+    def _compute_additional_metrics(self, metrics_dict):
+        '''Compute additional metrics (cosine similarity, so far).'''
+
+        if self.is_tabular:
+            metrics_dict = self._compute_metrics_tabular(metrics_dict)
+        elif self.env_family == 'Atari-v5':
+            metrics_dict = self._compute_metrics_atari(metrics_dict)
+        else:
+            raise ValueError(f'Invalid environment family: {self.env_family}')
+    
+        return metrics_dict
+        
+    def _compute_metrics_tabular(self, params, metrics_dict):
+
+        # Compute cosine similarities
+        cosine_similarity, similarities = self.compute_cosine_similarity(
+            params['encoder'], batch_size=self.batch_size)
+        cosine_similarity_simple, similarities_simple = self.compute_cosine_similarity_simple(
+            params['encoder'])
+        maximal_cosine_similarity, maximal_similarities = self.compute_maximal_cosine_similarity(params['encoder'])
+        
+        # Store metrics
+        metrics_dict['cosine_similarity'] = cosine_similarity
+        metrics_dict['cosine_similarity_simple'] = cosine_similarity_simple
+        metrics_dict['maximal_cosine_similarity'] = maximal_cosine_similarity
+
+        for feature in range(len(similarities)):   # Similarities for each feature
+            metrics_dict[f'cosine_similarity_{feature}'] = similarities[feature]
+            metrics_dict[f'cosine_similarity_simple_{feature}'] = similarities_simple[feature]
+            metrics_dict[f'maximal_cosine_similarity_{feature}'] = maximal_similarities[feature]
+
+        # Log in train_info to print
+        self.train_info['cos_sim'] = np.array([jax.device_get(cosine_similarity)])[0]
+        self.train_info['cos_sim_s'] = np.array([jax.device_get(cosine_similarity_simple)])[0]
+        self.train_info['max_cos_sim'] = np.array([jax.device_get(maximal_cosine_similarity)])[0]
+        
+        return metrics_dict
+    
+    def _compute_metrics_atari(self, params, metrics_dict):
+        '''Leave metrics_dict unchanged for now.'''
+
+        return metrics_dict
 
     def _save_model(self, params, optim_state, cosine_similarity):
         # Save the model if the cosine similarity is better than the previous best
@@ -374,6 +408,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             print(f'({total_n_steps}/{self.n_samples}) steps collected.')
         time_cost = timer.time_cost()
         print(f'Data collection finished, time cost: {time_cost}s')
+
+        if self.save_experience:
+            self.replay_buffer.save(self.save_experience_path)
         
         # Plot visitation counts
         if self.obs_mode in ['xy']:
@@ -434,7 +471,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         # Get approximated eigenvectors
         approx_eigvec = self.encoder_fn.apply(params_encoder, states)
-        
+
         # state_batches = self.split_into_batches(states, batch_size)
 
         # # Get approximated eigenvectors
@@ -492,6 +529,70 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                     approx = optimal_approx_eigvec[:,j]
                     pos_sim = (real).dot(approx)
                     similarities.append(jnp.maximum(pos_sim, -pos_sim))
+
+            id_ += multiplicity
+
+        # Convert to array
+        similarities = jnp.array(similarities)
+        # print(f'Similarities: {similarities}')
+
+        # Compute average cosine similarity
+        cosine_similarity = similarities.mean()
+
+        assert not jnp.isnan(similarities).any(), \
+            f'NaN values in the cosine similarities: {similarities}'
+
+        return cosine_similarity, similarities
+    
+    def compute_cosine_similarity_simple(self, params_encoder):
+        # Get states
+        states = self.get_states()
+        states = states.astype(jnp.float32)
+        states /= 255     
+
+        # Get approximated eigenvectors
+        approx_eigvec = self.encoder_fn.apply(params_encoder, states)
+        norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
+        approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
+        
+        # Compute cosine similarities for both directions
+        unique_real_eigval = sorted(self.eigvec_dict.keys(), reverse=True)
+        # print(f'Unique eigenvalues: {unique_real_eigval}')
+        id_ = 0
+        similarities = []
+        for i, eigval in enumerate(unique_real_eigval):
+            multiplicity = len(self.eigvec_dict[eigval])
+            # print(f'Eigenvalue {eigval} has multiplicity {multiplicity}')
+            
+            # Compute cosine similarity
+            if multiplicity == 1:
+                # Get eigenvectors associated with the current eigenvalue
+                current_real_eigvec = self.eigvec_dict[eigval][0]
+                current_approx_eigvec = approx_eigvec[:,id_]
+
+                # Check if any NaN values are present
+                assert not jnp.isnan(current_approx_eigvec).any(), \
+                    f'NaN values in the approximated eigenvector: {current_approx_eigvec}'
+                
+                assert not jnp.isnan(current_real_eigvec).any(), \
+                    f'NaN values in the real eigenvector: {current_real_eigvec}'
+
+                # Compute cosine similarity
+                pos_sim = (current_real_eigvec).dot(current_approx_eigvec)
+                similarities.append(jnp.maximum(pos_sim, -pos_sim))
+
+            else:
+                # Get eigenvectors associated with the current eigenvalue
+                current_real_eigvec = jnp.stack(self.eigvec_dict[eigval], axis=1)
+                current_approx_eigvec = approx_eigvec[:,id_:id_+multiplicity]
+                
+                # Compute projections
+                projection_matrix = jnp.einsum('ij,ik->jk', current_approx_eigvec, current_real_eigvec)
+
+                # Compute generalized cosine similarity
+                cos_sim = (projection_matrix**2).sum(axis=1)**0.5  
+                for similarity in cos_sim:               
+                    similarities.append(similarity)
 
             id_ += multiplicity
 

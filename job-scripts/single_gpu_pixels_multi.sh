@@ -36,4 +36,4 @@ LR=${lrs[$N_LR]}
 cd ~/projects/def-mbowling/diegog/laplacian_dual_dynamics/
 module load apptainer
 
-apptainer exec --nv -B /home -B $PWD:/pwd -B /project -W /scratch -B /localscratch -B $PROJECT_FOLDER --pwd /pwd ~/apptainer/lk_haiku_n.sif python3 train_laprepr.py "EXP1-PIXELS-MULTI-V2" --use_wandb --config_file $CONFIG --obs_mode "both" --env_name $ENV --seed $SEED --barrier_initial_val $B --lr_barrier_coefs $LR --n_samples 1000000 --total_train_steps 400000
+apptainer exec --nv -B /home -B $PWD:/pwd -B /project -W /scratch -B /localscratch -B $PROJECT_FOLDER --pwd /pwd ~/apptainer/lk_haiku_n.sif python3 train_laprepr.py "EXP1-PIXELS-MULTI-V3" --use_wandb --config_file $CONFIG --obs_mode "both" --env_name $ENV --seed $SEED --barrier_initial_val $B --lr_barrier_coefs $LR --n_samples 1000000 --total_train_steps 400000
