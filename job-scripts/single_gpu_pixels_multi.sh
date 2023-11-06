@@ -2,7 +2,7 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=16G
+#SBATCH --mem=16G
 #SBATCH --time=23:0:0
 #SBATCH --mail-user=gomeznor@ualberta.ca
 #SBATCH --mail-type=ALL
