@@ -409,9 +409,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         time_cost = timer.time_cost()
         print(f'Data collection finished, time cost: {time_cost}s')
 
-        if self.save_experience:
-            self.replay_buffer.save(self.save_experience_path)
-        
         # Plot visitation counts
         if self.obs_mode in ['xy']:
             self.plot_visitation_counts(timer)

@@ -142,9 +142,6 @@ class EpisodicReplayBuffer:
             lengths.append(len(self._episodes[index]))
         return np.array(lengths, dtype=np.int64)
     
-    def save_episodes(self, path):
-        
-    
     def get_visitation_counts(self):
         """Return the visitation counts of each state."""
 
