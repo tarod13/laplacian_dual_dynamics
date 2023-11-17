@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem-per-gpu=4G
+#SBATCH --mem-per-cpu=4G
 #SBATCH --time=23:0:0
 #SBATCH --mail-user=gomeznor@ualberta.ca
 #SBATCH --mail-type=ALL
