@@ -213,7 +213,10 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             is_last_step = (step + 1) == self.total_train_steps
             is_plot_step = (
                 self.do_plot_eigenvectors
-                and is_last_step
+                and (
+                    is_last_step
+                    or is_permutation_step
+                )
             )
             if is_plot_step:
                 self.plot_eigenvectors(params['encoder'])
