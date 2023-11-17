@@ -34,4 +34,4 @@ lr_barrier_coefs: 1.0
 min_barrier_coefs: 0
 max_barrier_coefs: 10000
 use_barrier_normalization: False
-permute_step: 4000
+permute_step: 20000

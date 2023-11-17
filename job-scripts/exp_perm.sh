@@ -11,9 +11,9 @@
 envs=("GridMaze-11" "GridRoom-64" "GridRoom-4" "GridRoomSym-4" "GridMaze-7" "GridMaze-17" "GridMaze-32" "GridMaze-26" "GridRoom-32" "GridMaze-9" "GridMaze-19" "GridRoom-1" "GridRoom-16")
 # 11 enough ('N', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y')
 # 12 enough ('Y', 'Y', 'Y', 'Y', 'N', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'N', 'Y')
-bs=(0.1)
-lrs=(0.01)
-configs=("al.yaml")
+bs=(2)
+lrs=(0)
+configs=("cqp.yaml")
 
 N_SEED=$((${SLURM_ARRAY_TASK_ID} / 13 + 1))
 R_ENV=$((${SLURM_ARRAY_TASK_ID} % 13))
@@ -35,4 +35,4 @@ LR=${lrs[$N_LR]}
 cd ~/projects/def-mbowling/diegog/laplacian_dual_dynamics/
 module load apptainer
 
-apptainer exec --nv -B /home -B $PWD:/pwd -B /project -W /scratch -B /localscratch -B $PROJECT_FOLDER --pwd /pwd ~/apptainer/lk_haiku_n.sif python3 train_laprepr.py "EXP-PERM-0" --use_wandb --config_file $CONFIG --obs_mode "xy" --env_name $ENV --seed $SEED --barrier_initial_val $B --lr_barrier_coefs $LR --n_samples 1000000 --total_train_steps 400000
+apptainer exec --nv -B /home -B $PWD:/pwd -B /project -W /scratch -B /localscratch -B $PROJECT_FOLDER --pwd /pwd ~/apptainer/lk_haiku_n.sif python3 train_laprepr.py "EXP-PERM-0" --use_wandb --config_file $CONFIG --obs_mode "xy" --env_name $ENV --seed $SEED --barrier_initial_val $B --lr_barrier_coefs $LR --n_samples 1000000 --total_train_steps 200000
