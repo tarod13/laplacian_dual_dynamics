@@ -1,0 +1,22 @@
+d: 11
+n_samples: 4000
+batch_size: 32
+discount: 0.9
+print_freq: 1000
+seed: 1234
+env_name: MontezumaRevenge
+env_family: Atari-v5
+lr: 0.001
+use_wandb: True
+hidden_dims:
+  - 256
+  - 256
+  - 256
+activation: relu
+window_size: 180
+encoder_id: last_20231112232043_21000
+render_mode: rgb_array # human
+agent_color: 
+  - 228
+  - 111
+  - 111

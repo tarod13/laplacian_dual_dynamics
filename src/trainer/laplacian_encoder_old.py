@@ -48,9 +48,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         self._global_step = 0
         self._best_cosine_similarity = -1
         self._date_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        self.past_permutation_array = jnp.arange(self.d)
-        self.permutation_array = jnp.arange(self.d)
-        self.init_train_functions()
 
     def _get_obs_batch(self, steps):   # TODO: Check this function (way to build the batch)
         if self.obs_mode in ["xy"]:
@@ -80,22 +77,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         batch = MC_sample(state, future_state, uncorrelated_state_1, uncorrelated_state_2)
         return batch
 
-    def train_step(self, params, train_batch, opt_state) -> None:
-        # Compute the gradients and associated intermediate metrics
-        grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
-
-        # Determine the real parameter updates
-        updates, opt_state = self.optimizer.update(grads, opt_state)
-
-        # Update the encoder parameters
-        params = optax.apply_updates(params, updates)
-
-        # Update the training state
-        params = self.update_training_state(params, aux[1])
-
-        return params, opt_state, aux[0]
-
-    def train_step_non_permuted(self, params, train_batch, opt_state) -> None:
+    def train_step_non_permuted(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
        
         # Compute the gradients and associated intermediate metrics
         grads, aux = jax.grad(self.loss_function, has_aux=True)(params, train_batch)
@@ -111,7 +93,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
         return params, opt_state, aux[0]
     
-    def train_step_permuted(self, params, train_batch, opt_state) -> None:
+    def train_step_permuted(self, params, train_batch, opt_state) -> None:   # TODO: Check if batch_global_idx can be passed as a parameter with jax
        
         # Compute the gradients and associated intermediate metrics
         grads, aux = jax.grad(self.loss_function_permuted, has_aux=True)(params, train_batch)
@@ -133,9 +115,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             return self._global_step > self.permute_step
         else:
             return False
-        
-    def init_train_functions(self):
-        self.jitted_train_step = jax.jit(self.train_step)
 
     def train(self) -> None:
 
@@ -167,18 +146,10 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
 
             train_batch = self._get_train_batch()
 
-            is_permutation_step = ((step + 1) % self.permute_step) == 0
-            if is_permutation_step:
-                self.past_permutation_array = self.permutation_array.copy()
-                self.permutation_array = jax.random.permutation(next(rng), self.d)
-                self.init_train_functions()
-
-            params, opt_state, metrics = self.jitted_train_step(params, train_batch, opt_state)
-
-            # if not self.is_permute_phase:
-            #     params, opt_state, metrics = self.train_step_non_permuted(params, train_batch, opt_state)
-            # else:
-            #     params, opt_state, metrics = self.train_step_permuted(params, train_batch, opt_state)
+            if not self.is_permute_phase:
+                params, opt_state, metrics = self.train_step_non_permuted(params, train_batch, opt_state)
+            else:
+                params, opt_state, metrics = self.train_step_permuted(params, train_batch, opt_state)
             
             self._global_step += 1   # TODO: Replace with self.step_counter
             
@@ -480,33 +451,6 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Plot visitation counts
         if self.obs_mode in ['xy']:
             self.plot_visitation_counts(timer)
-
-    def encode_states(
-            self, 
-            params_encoder,
-            train_batch: MC_sample,
-            *args, **kwargs,
-        ) -> Tuple[jnp.ndarray]:
-
-        # Compute start representations
-        start_representation = self.encoder_fn.apply(params_encoder, train_batch.state)
-        constraint_representation_1 = self.encoder_fn.apply(params_encoder, train_batch.uncorrelated_state_1)
-
-        # Compute end representations
-        end_representation = self.encoder_fn.apply(params_encoder, train_batch.future_state)
-        constraint_representation_2 = self.encoder_fn.apply(params_encoder, train_batch.uncorrelated_state_2)
-
-        # Permute representations
-        start_representation = self.permute_representations(start_representation)
-        end_representation = self.permute_representations(end_representation)
-        constraint_representation_1 = self.permute_representations(constraint_representation_1)
-        constraint_representation_2 = self.permute_representations(constraint_representation_2)
-
-        return (
-            start_representation, end_representation, 
-            constraint_representation_1, 
-            constraint_representation_2,
-        )
    
     def encode_states_non_permuted(
             self, 
@@ -584,8 +528,8 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
     
     def permute_representations(self, representations):
         '''Permute entries in the second dimension of the representations'''
-        permuted_representations = representations.copy()[:, self.permutation_array]
-        return permuted_representations
+        representations = representations[:,::-1]
+        return representations
 
     def compute_cosine_similarity(self, params_encoder, batch_size=32):
         # Get states
@@ -613,13 +557,9 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         # Normalize approximated eigenvectors
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
-
-        # Permute the approximated eigenvectors
-        approx_eigvec = approx_eigvec[:, self.past_permutation_array]
         
         # Compute cosine similarities for both directions
         unique_real_eigval = sorted(self.eigvec_dict.keys(), reverse=True)
-
         # print(f'Unique eigenvalues: {unique_real_eigval}')
         id_ = 0
         similarities = []
@@ -688,15 +628,16 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         norms = jnp.linalg.norm(approx_eigvec, axis=0, keepdims=True)
         approx_eigvec = approx_eigvec / norms.clip(min=1e-10)
 
-        # Permute the approximated eigenvectors
-        permuted_approx_eigvec = approx_eigvec[:, self.past_permutation_array]
-
+        # Reverse the order of the approximated eigenvectors
+        # if we are in the permutation phase
+        permuted_approx_eigvec = approx_eigvec[:,::-1]
+        
         # Compute cosine similarities for both directions
         unique_real_eigval = sorted(self.eigvec_dict.keys(), reverse=True)
-
         # print(f'Unique eigenvalues: {unique_real_eigval}')
         id_ = 0
         similarities = []
+        permuted_similarities = []
         for i, eigval in enumerate(unique_real_eigval):
             multiplicity = len(self.eigvec_dict[eigval])
             # print(f'Eigenvalue {eigval} has multiplicity {multiplicity}')
@@ -705,7 +646,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             if multiplicity == 1:
                 # Get eigenvectors associated with the current eigenvalue
                 current_real_eigvec = self.eigvec_dict[eigval][0]
-                current_approx_eigvec = permuted_approx_eigvec[:,id_]
+                current_approx_eigvec = approx_eigvec[:,id_]
 
                 # Check if any NaN values are present
                 assert not jnp.isnan(current_approx_eigvec).any(), \
@@ -718,10 +659,15 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 pos_sim = (current_real_eigvec).dot(current_approx_eigvec)
                 similarities.append(jnp.maximum(pos_sim, -pos_sim))
 
+                # Compute cosine similarity for permuted eigenvectors
+                current_approx_eigvec = permuted_approx_eigvec[:,id_]
+                pos_sim = (current_real_eigvec).dot(current_approx_eigvec)
+                permuted_similarities.append(jnp.maximum(pos_sim, -pos_sim))
+
             else:
                 # Get eigenvectors associated with the current eigenvalue
                 current_real_eigvec = jnp.stack(self.eigvec_dict[eigval], axis=1)
-                current_approx_eigvec = permuted_approx_eigvec[:,id_:id_+multiplicity]
+                current_approx_eigvec = approx_eigvec[:,id_:id_+multiplicity]
                 
                 # Compute projections
                 projection_matrix = jnp.einsum('ij,ik->jk', current_approx_eigvec, current_real_eigvec)
@@ -731,45 +677,11 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 for similarity in cos_sim:               
                     similarities.append(similarity)
 
-            id_ += multiplicity
-
-        # Permute the approximated eigenvectors
-        permuted_approx_eigvec = self.permute_representations(approx_eigvec)
-
-        id_ = 0
-        permuted_similarities = []
-        for i, eigval in enumerate(unique_real_eigval):
-            multiplicity = len(self.eigvec_dict[eigval])
-            # print(f'Eigenvalue {eigval} has multiplicity {multiplicity}')
-            
-            # Compute cosine similarity
-            if multiplicity == 1:
-                # Get eigenvectors associated with the current eigenvalue
-                current_real_eigvec = self.eigvec_dict[eigval][0]
-                current_approx_eigvec = permuted_approx_eigvec[:,id_]
-
-                # Check if any NaN values are present
-                assert not jnp.isnan(current_approx_eigvec).any(), \
-                    f'NaN values in the approximated eigenvector: {current_approx_eigvec}'
-                
-                assert not jnp.isnan(current_real_eigvec).any(), \
-                    f'NaN values in the real eigenvector: {current_real_eigvec}'
-
-                # Compute cosine similarity
-                pos_sim = (current_real_eigvec).dot(current_approx_eigvec)
-                permuted_similarities.append(jnp.maximum(pos_sim, -pos_sim))
-
-            else:
-                # Get eigenvectors associated with the current eigenvalue
-                current_real_eigvec = jnp.stack(self.eigvec_dict[eigval], axis=1)
+                # Compute cosine similarity for permuted eigenvectors
                 current_approx_eigvec = permuted_approx_eigvec[:,id_:id_+multiplicity]
-                
-                # Compute projections
                 projection_matrix = jnp.einsum('ij,ik->jk', current_approx_eigvec, current_real_eigvec)
-
-                # Compute generalized cosine similarity
-                cos_sim = (projection_matrix**2).sum(axis=1)**0.5  
-                for similarity in cos_sim:               
+                cos_sim = (projection_matrix**2).sum(axis=1)**0.5
+                for similarity in cos_sim:
                     permuted_similarities.append(similarity)
 
             id_ += multiplicity
@@ -1007,7 +919,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         raise NotImplementedError
 
     @abstractmethod
-    def loss_function_non_permuted(self, *args, **kwargs):
+    def loss_function(self, *args, **kwargs):
         raise NotImplementedError
     
     @abstractmethod

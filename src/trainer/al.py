@@ -46,7 +46,13 @@ class AugmentedLagrangianTrainer(GeneralizedAugmentedLagrangianTrainer):
         quadratic_error_matrix = params['quadratic_errors']
         updates = jnp.clip(quadratic_error_matrix, a_min=0, a_max=None).mean()
 
-        # Calculate updated coefficients
+        # # Calculate updated coefficients
+        # if self._global_step == self.permute_step:
+        #    # Reinitilize barrier coefficients
+        #     updated_barrier_coefficients = jnp.tril(self.barrier_initial_val * jnp.ones((1, 1)), k=0)
+        # else:
+        #     # Update barrier coefficients using the gradient of the barrier loss
+        #     updated_barrier_coefficients = barrier_coefficients + self.lr_barrier_coefs * updates
         updated_barrier_coefficients = barrier_coefficients + self.lr_barrier_coefs * updates
 
         # Clip coefficients to be in the range [min_barrier_coefs, max_barrier_coefs]

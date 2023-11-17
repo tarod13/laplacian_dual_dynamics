@@ -7,7 +7,7 @@ import gymnasium as gym
 
 if __name__ == "__main__":
     env_name = 'ALE/MontezumaRevenge-v5'
-    save_path = f'./results/visuals/atari/{env_name[4:]}/trajectories.npy'
+    save_path = f'./results/visuals/atari/{env_name[4:-3]}/trajectories.npy'
     obs_list = []
     
     # Create environment

@@ -112,7 +112,7 @@ class GeneralizedAugmentedLagrangianTrainer(LaplacianEncoderTrainer, ABC):
                     if i >= j
                 }
         return error_dict, updates
-
+    
     def loss_function(
             self, params, train_batch, **kwargs
         ) -> Tuple[jnp.ndarray]:
@@ -121,6 +121,104 @@ class GeneralizedAugmentedLagrangianTrainer(LaplacianEncoderTrainer, ABC):
         start_representation, end_representation, \
             constraint_representation_1, constraint_representation_2 \
                 = self.encode_states(params['encoder'], train_batch)
+        
+        # Compute primal loss
+        graph_loss, graph_induced_norm_dict = self.compute_graph_drawing_loss(
+            start_representation, end_representation
+        )
+        error_matrix_dict, inner_dict = self.compute_orthogonality_error_matrix(
+            constraint_representation_1, constraint_representation_2,
+        )
+
+        # Compute dual loss
+        dual_loss, barrier_loss, dual_dict = self.compute_orthogonality_loss(
+        params, error_matrix_dict)
+        
+        # Update error estimates
+        error_dict, error_update = self.update_error_estimates(params, error_matrix_dict)
+
+        # Compute total loss
+        lagrangian = graph_loss + dual_loss + barrier_loss
+        
+        loss = lagrangian
+        if self.normalize_graph_loss:
+            loss = loss / self.coefficient_vector.sum()
+
+        # Generate dictionary with losses for logging
+        metrics_dict = {
+            'train_loss': loss,
+            'graph_loss': graph_loss,
+            'dual_loss': dual_loss,
+            'barrier_loss': barrier_loss,
+        }
+
+        # Add additional metrics
+        metrics_dict.update(graph_induced_norm_dict)
+        metrics_dict.update(inner_dict)
+        metrics_dict.update(dual_dict)
+        metrics_dict.update(error_dict)
+        metrics = (loss, graph_loss, dual_loss, barrier_loss, metrics_dict)
+        aux = (metrics, error_update)
+
+        return loss, aux
+
+    def loss_function_non_permuted(
+            self, params, train_batch, **kwargs
+        ) -> Tuple[jnp.ndarray]:
+
+        # Get representations
+        start_representation, end_representation, \
+            constraint_representation_1, constraint_representation_2 \
+                = self.encode_states_non_permuted(params['encoder'], train_batch)
+        
+        # Compute primal loss
+        graph_loss, graph_induced_norm_dict = self.compute_graph_drawing_loss(
+            start_representation, end_representation
+        )
+        error_matrix_dict, inner_dict = self.compute_orthogonality_error_matrix(
+            constraint_representation_1, constraint_representation_2,
+        )
+
+        # Compute dual loss
+        dual_loss, barrier_loss, dual_dict = self.compute_orthogonality_loss(
+           params, error_matrix_dict)
+        
+        # Update error estimates
+        error_dict, error_update = self.update_error_estimates(params, error_matrix_dict)
+
+        # Compute total loss
+        lagrangian = graph_loss + dual_loss + barrier_loss
+        
+        loss = lagrangian
+        if self.normalize_graph_loss:
+            loss = loss / self.coefficient_vector.sum()
+
+        # Generate dictionary with losses for logging
+        metrics_dict = {
+            'train_loss': loss,
+            'graph_loss': graph_loss,
+            'dual_loss': dual_loss,
+            'barrier_loss': barrier_loss,
+        }
+
+        # Add additional metrics
+        metrics_dict.update(graph_induced_norm_dict)
+        metrics_dict.update(inner_dict)
+        metrics_dict.update(dual_dict)
+        metrics_dict.update(error_dict)
+        metrics = (loss, graph_loss, dual_loss, barrier_loss, metrics_dict)
+        aux = (metrics, error_update)
+
+        return loss, aux
+    
+    def loss_function_permuted(
+            self, params, train_batch, **kwargs
+        ) -> Tuple[jnp.ndarray]:
+
+        # Get representations
+        start_representation, end_representation, \
+            constraint_representation_1, constraint_representation_2 \
+                = self.encode_states_permuted(params['encoder'], train_batch)
         
         # Compute primal loss
         graph_loss, graph_induced_norm_dict = self.compute_graph_drawing_loss(
@@ -204,8 +302,8 @@ class GeneralizedAugmentedLagrangianTrainer(LaplacianEncoderTrainer, ABC):
 
         params['errors'] = error_update['errors']
         params['quadratic_errors'] = error_update['quadratic_errors']
-        return params
-    
+        return params    
+   
     @abstractmethod
     def update_barrier_coefficients(self, params, *args, **kwargs):   # TODO: eliminate this function when the best version is found
         raise NotImplementedError

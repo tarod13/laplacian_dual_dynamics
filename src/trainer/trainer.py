@@ -25,7 +25,7 @@ class Trainer(ABC):
         self.__dict__.update((k, v) for k, v in kwargs.items())
 
     @abstractmethod
-    def loss_function(self, *args, **kwargs):
+    def loss_function_non_permuted(self, *args, **kwargs):
         raise NotImplementedError
     
     @abstractmethod
@@ -37,9 +37,9 @@ class Trainer(ABC):
     #     raise NotImplementedError
 
     @abstractmethod
-    def train_step(self, *args, **kwargs):
+    def train_step_non_permuted(self, *args, **kwargs):
         raise NotImplementedError
-
+    
     @abstractmethod
     def train(self, *args, **kwargs):
         raise NotImplementedError

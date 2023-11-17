@@ -57,19 +57,16 @@ class NormObs(ObservationWrapper):
         return pixels
 
     def observation(self, observation):
-        grid_shape = self.env.grid.shape
-        lims_ = []
+        grid_shape = np.array(list(self.env.grid.shape))
         if self.obs_mode in ["xy", "both", "both-grid"]:
-            lims_.append(grid_shape)
-            if self.use_target:
-                lims_.append(grid_shape)
+            xy = observation["xy_agent"]
+            xy = xy.astype(np.float32) / grid_shape - 0.5
+            observation["xy_agent"] = xy
         if self.obs_mode in ["pixels", "both"]:
-            lims_.append(255)
             observation["pixels"] = self._resize_pixels(observation["pixels"])
         if self.obs_mode in ["grid", "both-grid"]:
-            lims_.append(255)
             observation["grid"] = observation["grid"]
-        return normalize_obs_dict(observation, lims_)
+        return observation
     
     def get_states(self):
         state_dict = self.env.get_states()
@@ -77,13 +74,15 @@ class NormObs(ObservationWrapper):
         if self.obs_mode in ["xy", "both", "both-grid"]:
             xy_states = state_dict["xy_agent"]
             xy_states = xy_states.copy().astype(np.float32)
-            grid_shape = self.env.grid.shape
-            xy_states = normalize_pos_vec(xy_states, grid_shape)
+            grid_shape = np.array(list(self.env.grid.shape))
+            xy_states = xy_states / grid_shape.reshape(1,-1) - 0.5
             state_dict["xy_agent"] = xy_states
         
         if self.obs_mode in ["pixels", "both"]:
             pixels = state_dict["pixels"]
             pixels = self._resize_pixels(pixels)
+            pixels = pixels.copy().astype(np.float32)
+            pixels /= 255
             state_dict["pixels"] = pixels
         
         if self.obs_mode in ["grid", "both-grid"]:

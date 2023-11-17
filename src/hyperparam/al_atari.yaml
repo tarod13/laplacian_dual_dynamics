@@ -1,5 +1,5 @@
 d: 11
-n_samples: 200000
+n_samples: 400000
 batch_size: 32
 discount: 0.9
 log_dir: '/tmp/rl_laprepr/log'
@@ -19,8 +19,8 @@ activation: relu
 eigval_precision_order: 16
 direct_rotation: True
 save_eig: True
-save_model: False
-save_model_every: 50000
+save_model: True
+save_model_every: 1000
 do_plot_eigenvectors: False
 obs_mode: both
 window_size: 180
@@ -35,7 +35,7 @@ min_barrier_coefs: 0
 max_barrier_coefs: 10000
 use_barrier_normalization: False
 use_barrier_for_duals: False
-lr_duals: 0.0001
+lr_duals: 0.001
 lr_dual_velocities: 0.1
 min_duals: -100
 max_duals: 100
