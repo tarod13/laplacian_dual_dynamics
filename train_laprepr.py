@@ -182,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config_file', 
         type=str, 
-        default= 'barrier.yaml',
+        default= 'al.yaml',
         help='Configuration file to use.'
     )
     parser.add_argument(
