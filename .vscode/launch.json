@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Generalized GDO: GDO + monotonically decreasing coefficients",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -15,7 +15,7 @@
         }, 
         {
             "name": "Quadratic penalty GGDO: GGDO + monotonically increase the barrier parameter",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -32,7 +32,7 @@
         }, 
         {
             "name": "Quadratic penalty + stop gradients: AL with zero duals and monotonically increasing barrier",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -41,24 +41,24 @@
         }, 
         {
             "name": "Augmented Lagrangian + stop gradients: learn duals and monotonically increase the barrier parameter",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "S-T1", "--use_wandb", "--wandb_offline",
+                "FinalTest", "--use_wandb",
                 "--config_file", "al.yaml", 
                 "--env_name", "GridMaze-19", 
-                "--barrier_initial_val", "0.01",
-                "--lr_barrier_coefs", "0.01", 
+                "--barrier_initial_val", "5.0",
+                "--lr_barrier_coefs", "0", 
                 "--save_dir", "./wandb",
-                "--n_samples", "1000000",
+                "--n_samples", "100000",
             ],
         }, 
         {
             "name": "Augmented Lagrangian with pixels",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -78,7 +78,7 @@
         }, 
         {
             "name": "Augmented Lagrangian with grid observations",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -98,7 +98,7 @@
         },
         {
             "name": "Atari",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -121,7 +121,7 @@
         },
         {
             "name": "Atari - Test",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",

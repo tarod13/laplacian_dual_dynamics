@@ -24,9 +24,6 @@ from src.nets import (
 )
 import wandb
 
-os.environ['WANDB_API_KEY']='83c25550226f8a86fdd4874026d2c0804cd3dc05'
-os.environ['WANDB_ENTITY']='tarod13'
-
 def main(hyperparams):
     if hyperparams.wandb_offline:
         os.environ['WANDB_MODE']='offline'
@@ -41,7 +38,7 @@ def main(hyperparams):
             hparam_yaml[k] = v
 
     # Set random seed
-    np.random.seed(hparam_yaml['seed'])   # TODO: Check if this is the best way to set the seed
+    np.random.seed(hparam_yaml['seed'])
     random.seed(hparam_yaml['seed'])
 
     # Initialize timer
@@ -81,7 +78,7 @@ def main(hyperparams):
         **specific_params    
     )   # TODO: Consider the observation space (e.g. pixels)
     
-    optimizer = optax.adam(hparam_yaml['lr'])   # TODO: Add hyperparameter to config file
+    optimizer = optax.adam(hparam_yaml['lr'])
     
     replay_buffer = EpisodicReplayBuffer(max_size=hparam_yaml['n_samples'])   # TODO: Separate hyperparameter for replay buffer size (?)
 

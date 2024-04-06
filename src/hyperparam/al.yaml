@@ -3,7 +3,7 @@ n_samples: 200000
 batch_size: 1024
 discount: 0.9
 log_dir: '/tmp/rl_laprepr/log'
-total_train_steps: 10000
+total_train_steps: 20000
 print_freq: 200
 max_episode_steps: 50
 seed: 1234
@@ -18,10 +18,10 @@ hidden_dims:
 activation: relu
 eigval_precision_order: 16
 direct_rotation: True
-save_eig: True
+save_eig: False
 save_model: False
 save_model_every: 50000
-do_plot_eigenvectors: False
+do_plot_eigenvectors: True
 obs_mode: xy
 window_size: 180
 reduction_factor: 1

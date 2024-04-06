@@ -12,11 +12,12 @@ import jax
 class NormObs(ObservationWrapper):
     def __init__(self, env, reduction_factor=1):
         super().__init__(env)
+        self.obs_mode = self.env.unwrapped.obs_mode
 
         obs_dict = {}
         if self.obs_mode in ["xy", "both", "both-grid"]:
             obs_dict["xy_agent"] = spaces.Box(-0.5, 0.5, shape=(2,), dtype=np.float32)
-            if self.use_target:
+            if self.unwrapped.use_target:
                 obs_dict["xy_target"] = spaces.Box(-0.5, 0.5, shape=(2,), dtype=np.float32)
         
         if self.obs_mode in ["pixels", "both"]:
@@ -57,7 +58,7 @@ class NormObs(ObservationWrapper):
         return pixels
 
     def observation(self, observation):
-        grid_shape = np.array(list(self.env.grid.shape))
+        grid_shape = np.array(list(self.env.unwrapped.get_grid().shape))
         if self.obs_mode in ["xy", "both", "both-grid"]:
             xy = observation["xy_agent"]
             xy = xy.astype(np.float32) / grid_shape - 0.5
@@ -69,12 +70,12 @@ class NormObs(ObservationWrapper):
         return observation
     
     def get_states(self):
-        state_dict = self.env.get_states()
+        state_dict = self.env.unwrapped.get_states()
         
         if self.obs_mode in ["xy", "both", "both-grid"]:
             xy_states = state_dict["xy_agent"]
             xy_states = xy_states.copy().astype(np.float32)
-            grid_shape = np.array(list(self.env.grid.shape))
+            grid_shape = np.array(list(self.env.unwrapped.get_grid().shape))
             xy_states = xy_states / grid_shape.reshape(1,-1) - 0.5
             state_dict["xy_agent"] = xy_states
         

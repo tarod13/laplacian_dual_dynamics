@@ -375,14 +375,15 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             obs_mode=self.obs_mode,
             window_size=self.window_size,
         )
-        # Wrap environment with observation normalization
-        obs_wrapper = lambda e: NormObs(
-            e, reduction_factor=self.reduction_factor)
-        env = obs_wrapper(env)
         # Wrap environment with time limit
         time_wrapper = lambda e: TimeLimit(
             e, max_episode_steps=self.max_episode_steps)
         env = time_wrapper(env)
+
+        # Wrap environment with observation normalization
+        obs_wrapper = lambda e: NormObs(
+            e, reduction_factor=self.reduction_factor)
+        env = obs_wrapper(env)
 
         # Set seed
         env.reset(seed=self.seed)
@@ -395,14 +396,14 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
             self.env.save_eigenpairs(path_eig)
 
         # Log environment eigenvalues
-        self.env.round_eigenvalues(self.eigval_precision_order)
-        eigenvalues = self.env.get_eigenvalues()
+        self.env.unwrapped.round_eigenvalues(self.eigval_precision_order)
+        eigenvalues = self.env.unwrapped.get_eigenvalues()
         print(f'Environment: {self.env_name}')
         print(f'Environment eigenvalues: {eigenvalues}')
 
         # Create eigenvector dictionary
         real_eigval = eigenvalues[:self.d]
-        real_eigvec = self.env.get_eigenvectors()[:,:self.d]
+        real_eigvec = self.env.unwrapped.get_eigenvectors()[:,:self.d]
 
         assert not np.isnan(real_eigvec).any(), \
             f'NaN values in the real eigenvectors: {real_eigvec}'
@@ -920,7 +921,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
                 self.replay_buffer.plot_visitation_counts(
                     self.env.get_states()['xy_agent'],   # TODO: Make this more general (not only for xy or both)
                     self.env_name,
-                    self.env.grid.astype(bool),
+                    self.env.unwrapped.get_grid().astype(bool),
             )
         time_cost = timer.time_cost()
         print(f'Visitation evaluated, time cost: {time_cost}s')
@@ -945,7 +946,7 @@ class LaplacianEncoderTrainer(Trainer, ABC):    # TODO: Handle device
         signs = jnp.sign(approx_eigvec[jnp.arange(approx_eigvec.shape[1]), first_non_zero_id])
         approx_eigvec = approx_eigvec * signs.reshape(1,-1)
 
-        grid = self.env.grid.astype(bool)
+        grid = self.env.unwrapped.get_grid().astype(bool)
         vmin = jnp.min(approx_eigvec)
         vmax = jnp.max(approx_eigvec)
 

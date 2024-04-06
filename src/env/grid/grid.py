@@ -500,6 +500,9 @@ class GridEnv(gym.Env):
     
     def get_eigenvalues(self):
         return self._eigval
+
+    def get_grid(self):
+        return self.grid
     
     def round_eigenvalues(self, decimals=5):
         self._eigval = np.round(self._eigval, decimals=decimals).astype(np.float32)
